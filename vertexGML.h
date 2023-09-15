@@ -7,6 +7,13 @@
 #include "uniform.h"
 
 extern float timeAni;
+extern glm::vec3 L;
+extern glm::vec3 L2;
+extern glm::vec3 L3;
+extern glm::vec3 L4;
+extern glm::vec3 L5;
+extern bool moonToPlanet;
+extern float multiplier;
 
 struct Face {
     std::vector<int> vertexIndices;
@@ -37,12 +44,16 @@ struct Fragment {
   Color color;
   float intensity = 1.0f;
   glm::vec3 original;
+  glm::vec3 normal;
 };
 std::vector<Fragment> triangle_F(VertexGML a, VertexGML b, VertexGML c);
 VertexGML vertexShader(const VertexGML& vertex, const Uniform& u);
 void sunFragmentShader(Fragment& fragment);
 void skyFragmentShader(Fragment& fragment);
 void configSunNoiseGenerator();
+void planetFragmentShader(Fragment& fragment);
+void configPlanetNoiseGenerator();
+void moonFragmentShader(Fragment& fragment);
 std::vector<Fragment> triangulateAndDrawCube(std::vector<Facer> Faces, SDL_Renderer* renderer);
 
 

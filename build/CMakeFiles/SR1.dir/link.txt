@@ -1,1 +1,0 @@
-/usr/bin/c++ CMakeFiles/SR1.dir/main.cpp.o CMakeFiles/SR1.dir/render.cpp.o CMakeFiles/SR1.dir/color.cpp.o CMakeFiles/SR1.dir/framebuffer.cpp.o CMakeFiles/SR1.dir/vertexGML.cpp.o CMakeFiles/SR1.dir/objSettings.cpp.o CMakeFiles/SR1.dir/uniform.cpp.o -o SR1  -lSDL2 -ltbb 

@@ -4,15 +4,19 @@
 #include "uniform.h"
 #include "FastNoiseLite.h"
 #include <SDL2/SDL_timer.h>
-#include <algorithm>
 #include <cmath>
 #include <glm/common.hpp>
 #include <iostream>
 #include <random>
-#include <tbb/tbb.h>
 #include <mutex>
 
-glm::vec3 L = glm::vec3(0, 0, 1.0f);
+glm::vec3 L = glm::vec3(0.0f, 0, 1.0f);
+glm::vec3 L2 = glm::vec3(0.0f, 0, 1.0f);
+glm::vec3 L3 = glm::vec3(0.0f, 0, 1.0f);
+glm::vec3 L4 = glm::vec3(0.0f, 0, 1.0f);
+glm::vec3 L5 = glm::vec3(0.0f, 0, 1.0f);
+bool moonToPlanet = true;
+float multiplier = 0.0f;
 
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -77,10 +81,10 @@ std::vector<Fragment> triangle_F(VertexGML a, VertexGML b, VertexGML c) {
           float intensity = glm::dot(normal, L);
           if (intensity< 0) {
               continue;
-            }
+          }
 
           triangleFragments.push_back(
-            Fragment{glm::vec3(P.x, P.y, z), color * intensity, intensity, original}
+            Fragment{glm::vec3(P.x, P.y, z), color * intensity, intensity, original, normal}
           );
         }
       }
@@ -109,6 +113,8 @@ VertexGML vertexShader(const VertexGML& vertex, const Uniform& u) {
 float timeAni = 0.0f;
 
 FastNoiseLite sunNoiseGenerator;
+FastNoiseLite planetContientNoiseGenerator;
+FastNoiseLite planetCloudNoiseGenerator;
 float ox;
 float oy;
 float zoom;
@@ -124,6 +130,72 @@ void sunFragmentShader(Fragment& fragment) {
     glm::vec3 tmpColor =  glm::mix(yellowSun,orangeSun,(1-noiseValue));
     tmpColor = glm::mix(iluminationSun,tmpColor, fragment.intensity);
 
+
+    fragment.color = Color(tmpColor.x, tmpColor.y, tmpColor.z);
+}
+
+void planetFragmentShader(Fragment& fragment) {
+
+    glm::vec3 groundColor = glm::vec3(0.0f/255.0f,105.0f/255.0f, 148.0f/255.0f);
+    glm::vec3 oceanColor = glm::vec3(0.0f/255.0f,143.0f/255.0f, 57.0f/255.0f);
+    glm::vec3 cloudColor = glm::vec3(255.0f/255.0f,255.0f/255.0f, 255.0f/255.0f);
+    glm::vec3 uv = glm::vec3(fragment.original.x, fragment.original.y, fragment.original.z) ;
+    float intensity = glm::dot(fragment.normal, L2);
+    float intensity2 = glm::dot(fragment.normal, L3 * 2.0f);
+    //float intensity = fragment.intensity;
+    float oxE = 3000;
+    float oyE = 3000;
+    float zoomE = 700;
+
+    float noiseValue = abs(planetContientNoiseGenerator.GetNoise((uv.x + oxE) * zoomE, (uv.y + oyE) * zoomE, uv.z * zoomE)) ;
+    float noiseValueC = abs(planetContientNoiseGenerator.GetNoise((uv.x + ox) * zoom/3.0f, (uv.y + oy) * zoom/3.0f, uv.z * zoom/3.0f)) ;
+
+    intensity = (intensity< 0.05f)? 0.05f: intensity;
+    intensity2 = (intensity2< 0.05f)? 0.05f: intensity2;
+
+    glm::vec3 tmpColor =  (noiseValue>0.5f)? oceanColor: groundColor;
+    tmpColor = (noiseValueC<0.8f && noiseValueC > 0.5f)? glm::mix(cloudColor, tmpColor, noiseValueC): tmpColor;
+    tmpColor =(intensity<=1)? glm::mix(glm::vec3(0,0,0),tmpColor, intensity): tmpColor;
+    if(intensity>0.05f){
+        if(intensity2<1 && intensity2>0.58f){
+            tmpColor = glm::mix(tmpColor,glm::vec3(0,0,0), intensity2);
+        }
+    }
+    else{
+        tmpColor = tmpColor;
+    }
+
+    fragment.color = Color(tmpColor.x, tmpColor.y, tmpColor.z);
+}
+
+void moonFragmentShader(Fragment& fragment) {
+
+    glm::vec3 groundColor = glm::vec3(176.0f/255.0f,176.0f/255.0f, 176.0f/255.0f);
+    glm::vec3 oceanColor = glm::vec3(67.0f/255.0f,75.0f/255.0f, 77.0f/255.0f);
+    glm::vec3 cloudColor = glm::vec3(255.0f/255.0f,255.0f/255.0f, 255.0f/255.0f);
+    glm::vec3 uv = glm::vec3(fragment.original.x, fragment.original.y, fragment.original.z) ;
+    float intensity = glm::dot(fragment.normal, L5);
+    float intensity2 = glm::dot(fragment.normal, L4 * 2.5f);
+    //float intensity = fragment.intensity;
+    float oxE = 3000;
+    float oyE = 3000;
+    float zoomE = 700;
+
+    float noiseValue = abs(planetContientNoiseGenerator.GetNoise((uv.x + oxE) * zoomE, (uv.y + oyE) * zoomE, uv.z * zoomE)) ;
+
+    intensity = (intensity< 0.05f)? 0.05f: intensity;
+    intensity2 = (intensity2> 0.95f)? 0.95f: intensity2;
+
+    glm::vec3 tmpColor =  (noiseValue>0.5f)? oceanColor: groundColor;
+    tmpColor =(intensity<=1)? glm::mix(glm::vec3(0,0,0),tmpColor, intensity): tmpColor;
+    if(intensity>0.05f){
+        if(intensity2<1 && intensity2>0.15f){
+            tmpColor = glm::mix(glm::vec3(0,0,0), tmpColor, (1-intensity2));
+        }
+    }
+    else{
+        tmpColor = tmpColor;
+    }
 
     fragment.color = Color(tmpColor.x, tmpColor.y, tmpColor.z);
 }
@@ -146,6 +218,37 @@ void configSunNoiseGenerator(){
     zoom =1300.0f;
 
     sunNoiseGenerator = noiseGenerator;
+}
+
+void configPlanetNoiseGenerator(){
+
+    FastNoiseLite noiseGenerator;
+    noiseGenerator.SetNoiseType(FastNoiseLite::NoiseType_Cellular);
+    noiseGenerator.SetCellularReturnType(FastNoiseLite::CellularReturnType_CellValue);
+    noiseGenerator.SetCellularDistanceFunction(FastNoiseLite::CellularDistanceFunction_Hybrid);
+    noiseGenerator.SetDomainWarpType(FastNoiseLite::DomainWarpType_OpenSimplex2);
+    noiseGenerator.SetRotationType3D(FastNoiseLite::RotationType3D_ImproveXYPlanes);
+    noiseGenerator.SetSeed(1337);
+    noiseGenerator.SetFrequency(0.010f);
+    noiseGenerator.SetFractalType(FastNoiseLite::FractalType_DomainWarpIndependent);
+    noiseGenerator.SetFractalOctaves(3);
+    noiseGenerator.SetFractalLacunarity(2.0f);
+    noiseGenerator.SetFractalGain(0.50f);
+
+    FastNoiseLite noiseGen;
+    noiseGen.SetSeed(1337);
+    noiseGen.SetCellularDistanceFunction(FastNoiseLite::CellularDistanceFunction_Hybrid);
+    noiseGen.SetCellularReturnType(FastNoiseLite::CellularReturnType_CellValue);
+    noiseGen.SetDomainWarpType(FastNoiseLite::DomainWarpType_BasicGrid);
+    noiseGen.SetDomainWarpAmp(50.0f);
+    noiseGen.SetFrequency(0.010f);
+    noiseGen.SetFractalType(FastNoiseLite::FractalType_DomainWarpProgressive);
+    noiseGen.SetFractalOctaves(5);
+    noiseGen.SetFractalLacunarity(2.0f);
+    noiseGen.SetFractalGain(0.60);
+
+    planetCloudNoiseGenerator = noiseGen;
+    planetContientNoiseGenerator = noiseGenerator;
 }
 
 const double starDensity = 0.0005; // Mayor densidad = más estrellas
@@ -171,43 +274,8 @@ void skyFragmentShader(Fragment& fragment) {
     uint32_t hash = fnv1aHash(fragment.original.x, fragment.original.y, fragment.original.z);
     float normalizedHash = static_cast<float>(hash) / static_cast<float>(UINT32_MAX);
 
-    //glm::vec3 tmpColor = (noiseValue < 0.6f) ? oceanColor : groundColor;
-    Color color = (normalizedHash < starDensity) ? WHITE: BLACK;
+    Color color = (normalizedHash < starDensity) ? Color(244, 244, 244): BLACK;
 
     fragment.color = color;
 }
-
-
-std::mutex fragments_mutex;
-
-std::vector<Fragment> triangulateAndDrawCube(std::vector<Facer> Faces, SDL_Renderer* renderer) {
-    std::vector<Fragment> fragments;
-
-    tbb::parallel_for_each(Faces.begin(), Faces.end(), [&](const Facer& face) {
-        if (face.vertexIndices.size() >= 3) {
-            // Triangular la cara utilizando los vértices A, B y C
-          bool inX = face.vertexIndices[0].position.x<0 && face.vertexIndices[1].position.x<0 && face.vertexIndices[2].position.x<0;
-          bool inY = face.vertexIndices[0].position.y<0 && face.vertexIndices[1].position.y<0 && face.vertexIndices[2].position.y<0;
-          bool onY = face.vertexIndices[0].position.y<pantallaAlto-1 && face.vertexIndices[1].position.y<pantallaAlto-1 && face.vertexIndices[2].position.y<pantallaAlto-1;
-          bool onX = face.vertexIndices[0].position.x<pantallaAncho-1 && face.vertexIndices[1].position.x<pantallaAncho-1 && face.vertexIndices[2].position.x<pantallaAncho-1;
-
-          if (!(inX||inY||onX||onY)){
-            std::vector<Fragment> rasterizedTriangle = triangle_F(
-                face.vertexIndices[0],
-                face.vertexIndices[1],
-                face.vertexIndices[2]);
-
-            std::lock_guard<std::mutex> lock(fragments_mutex); // Utiliza std::mutex aquí
-            fragments.insert(
-                fragments.end(),
-                rasterizedTriangle.begin(),
-                rasterizedTriangle.end()
-            );
-          }
-        }
-    });
-
-    return fragments;
-}
-
 

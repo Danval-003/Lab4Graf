@@ -2,7 +2,9 @@
 #include <glm/glm.hpp>
 
 extern float a;
+extern float b;
 extern glm::vec3 cameraPosition;
+extern glm::vec3 orientation;
 
 struct Uniform {
   glm::mat4 model;
@@ -26,3 +28,4 @@ void configureUniformPlanet(Uniform* u);
 
 glm::mat4 createViewMatrix(glm::vec3 positionInMap, float rotation);
 glm::mat4 createModelMatrix(glm::vec3 positionInMap, float scale_);
+glm::mat4 createModelMatrixPlanet(glm::vec3 positionInMap, float scale_);

@@ -5,7 +5,7 @@
 
 // Tamaño de la pantalla
 const int pantallaAncho = 800;
-const int pantallaAlto = 800;
+const int pantallaAlto = 500;
 
 // Variable global: framebuffer
 extern std::array<Color, pantallaAncho * pantallaAlto> framebuffer;

@@ -5,7 +5,9 @@
 
 
 float a = 3.14f / 3.0f;
-glm::vec3 cameraPosition = glm::vec3(0, 0, 7);
+float b = 3.14f / 3.0f;
+glm::vec3 cameraPosition = glm::vec3(0, 0, 5);
+glm::vec3 orientation = glm::vec3 (0, 0, 0);
 
 glm::mat4 createModelMatrix() {
     glm::mat4 transtation = glm::translate(glm::mat4(1), glm::vec3(0.0f, 0.0f, 0.0f));
@@ -18,7 +20,15 @@ glm::mat4 createModelMatrix() {
 glm::mat4 createModelMatrixPlanet() {
     glm::mat4 transtation = glm::translate(glm::mat4(1), glm::vec3(0.0f, 0.0f, 0.0f));
     glm::mat4 scale = glm::scale(glm::mat4(a), glm::vec3(1.0f, 1.0f, 1.0f));
-    glm::mat4 rotation = glm::rotate(glm::mat4(1), glm::radians(a++), glm::vec3(0.0f, 1.0f, 0.0f));
+    glm::mat4 rotation = glm::rotate(glm::mat4(1), glm::radians(b), glm::vec3(0.0f, 1.0f, 0.0f));
+
+    return transtation * scale * rotation;
+}
+
+glm::mat4 createModelMatrixPlanet(glm::vec3 positionInMap, float scale_) {
+    glm::mat4 transtation = glm::translate(glm::mat4(1), positionInMap);
+    glm::mat4 scale = glm::scale(glm::mat4(1.0f), glm::vec3(scale_, scale_, scale_));
+    glm::mat4 rotation = glm::rotate(glm::mat4(1), glm::radians(b), glm::vec3(0.0f, 1.0f, 0.0f));
 
     return transtation * scale * rotation;
 }
@@ -38,7 +48,7 @@ glm::mat4 createViewMatrix() {
         // donde esta
         cameraPosition,
         // hacia adonde mira
-        glm::vec3(0, 0, 0),
+        orientation,
         // arriba
         glm::vec3(0, 1, 0)
     );
@@ -55,10 +65,11 @@ glm::mat4 createViewMatrix(glm::vec3 positionInMap, float rotation) {
 
     // Calcular la posición de la cámara después de la rotación
     glm::vec3 newPosition = positionInMap;
+    orientation = newPosition + front;
 
     return glm::lookAt(
         newPosition,
-        newPosition + front,
+        orientation,
         glm::vec3(0, 1, 0)
     ) ;
 }
