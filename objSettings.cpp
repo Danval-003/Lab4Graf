@@ -29,7 +29,6 @@ bool loadOBJ(const std::string& path, std::vector<VertexGML>& out_vertices, std:
         iss >> type;
 
         if (type == "v") {
-
             glm::vec3 vertex;
             iss >> vertex.x >> vertex.y >> vertex.z;
             VertexGML newVec;
@@ -54,9 +53,6 @@ bool loadOBJ(const std::string& path, std::vector<VertexGML>& out_vertices, std:
             glm::vec3 vertex;
             iss >> vertex.x >> vertex.y >> vertex.z;
             VertexGML newVec;
-            vertex.x = vertex.x * 1;
-            vertex.y = vertex.y * 1;
-            vertex.z = vertex.z * 1;
             newVec.position = vertex;
             newVec.color = YELLOW;
             temp_normal_vertices.push_back(newVec);
@@ -64,9 +60,6 @@ bool loadOBJ(const std::string& path, std::vector<VertexGML>& out_vertices, std:
             glm::vec3 vertex;
             iss >> vertex.x >> vertex.y >> vertex.z;
             VertexGML newVec;
-            vertex.x = vertex.x * -1;
-            vertex.y = vertex.y * -1;
-            vertex.z = vertex.z * -1;
             newVec.position = vertex;
             newVec.color = YELLOW;
             temp_texture_vertices.push_back(newVec);

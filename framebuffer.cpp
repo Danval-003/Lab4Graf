@@ -4,7 +4,6 @@
 std::array<Color, pantallaAncho * pantallaAlto> framebuffer;
 std::array<float, pantallaAncho * pantallaAlto> zbuffer;
 Color clearColor(0, 0, 0);
-Color currentColor(255, 255, 255);
 
 
 #include <thread>
@@ -47,21 +46,4 @@ void clear() {
     }
 }
 
-void clear(SDL_Renderer* renderer) {
-    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
-    SDL_RenderClear(renderer);
-
-
-    for (int i = 0; i < pantallaAncho*pantallaAlto; ++i) {
-        zbuffer[i] = 99999.0f;
-    }
-}
-
-void setCurrentColor(Color changeColor) {
-    currentColor = changeColor;
-}
-
-void setClearColor(Color changeColor) {
-    clearColor = changeColor;
-}
 

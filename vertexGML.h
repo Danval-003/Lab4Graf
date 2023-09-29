@@ -31,6 +31,7 @@ struct VertexGML {
     Color color;
     glm::vec3 normal;
     glm::vec2 texture;
+    double z;
 };
 
 struct Facer {
@@ -42,7 +43,7 @@ struct Facer {
 struct Fragment {
   glm::vec3 position;
   Color color;
-  float intensity = 1.0f;
+  float intensity;
   glm::vec3 original;
   glm::vec3 normal;
 };
@@ -52,8 +53,10 @@ void sunFragmentShader(Fragment& fragment);
 void skyFragmentShader(Fragment& fragment);
 void configSunNoiseGenerator();
 void planetFragmentShader(Fragment& fragment);
+void planet2FragmentShader(Fragment& fragment);
 void configPlanetNoiseGenerator();
 void moonFragmentShader(Fragment& fragment);
-std::vector<Fragment> triangulateAndDrawCube(std::vector<Facer> Faces, SDL_Renderer* renderer);
+void shipFragmentShader(Fragment& fragment);
+Color skyFragmentShader2(glm::vec3& pos, glm::vec3& offset );
 
 

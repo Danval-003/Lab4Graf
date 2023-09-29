@@ -4,40 +4,50 @@
 #include "framebuffer.h"
 
 
-float a = 3.14f / 3.0f;
-float b = 3.14f / 3.0f;
+
 glm::vec3 cameraPosition = glm::vec3(0, 0, 5);
 glm::vec3 orientation = glm::vec3 (0, 0, 0);
+glm::vec3 uper = glm::vec3(0, 1, 0);
 
 glm::mat4 createModelMatrix() {
     glm::mat4 transtation = glm::translate(glm::mat4(1), glm::vec3(0.0f, 0.0f, 0.0f));
-    glm::mat4 scale = glm::scale(glm::mat4(a), glm::vec3(1.0f, 1.0f, 1.0f));
-    glm::mat4 rotation = glm::rotate(glm::mat4(1), glm::radians(a), glm::vec3(0.0f, 1.0f, 0.0f));
+    glm::mat4 scale = glm::scale(glm::mat4(1), glm::vec3(1.0f, 1.0f, 1.0f));
+    glm::mat4 rotation = glm::rotate(glm::mat4(1), glm::radians(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
     return transtation * scale * rotation;
 }
 
 glm::mat4 createModelMatrixPlanet() {
     glm::mat4 transtation = glm::translate(glm::mat4(1), glm::vec3(0.0f, 0.0f, 0.0f));
-    glm::mat4 scale = glm::scale(glm::mat4(a), glm::vec3(1.0f, 1.0f, 1.0f));
-    glm::mat4 rotation = glm::rotate(glm::mat4(1), glm::radians(b), glm::vec3(0.0f, 1.0f, 0.0f));
+    glm::mat4 scale = glm::scale(glm::mat4(1), glm::vec3(1.0f, 1.0f, 1.0f));
+    glm::mat4 rotation = glm::rotate(glm::mat4(1), glm::radians(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
     return transtation * scale * rotation;
 }
 
-glm::mat4 createModelMatrixPlanet(glm::vec3 positionInMap, float scale_) {
+glm::mat4 createModelMatrixPlanet(glm::vec3 positionInMap, float scale_, float b) {
     glm::mat4 transtation = glm::translate(glm::mat4(1), positionInMap);
     glm::mat4 scale = glm::scale(glm::mat4(1.0f), glm::vec3(scale_, scale_, scale_));
     glm::mat4 rotation = glm::rotate(glm::mat4(1), glm::radians(b), glm::vec3(0.0f, 1.0f, 0.0f));
 
     return transtation * scale * rotation;
+}
+
+glm::mat4 createModelMatrixPlanet(glm::vec3 positionInMap, float scale_, float b, float rotateX, float rotateZ) {
+    glm::mat4 transtation = glm::translate(glm::mat4(1), positionInMap);
+    glm::mat4 scale = glm::scale(glm::mat4(1.0f), glm::vec3(scale_, scale_, scale_));
+    glm::mat4 rotation = glm::rotate(glm::mat4(1), glm::radians(b), glm::vec3(0.0f, 1.0f, 0.0f));
+    glm::mat4 rotation2 = glm::rotate(glm::mat4(1), glm::radians(rotateX), glm::vec3(1.0f, 0.0f, 0.0f));
+    glm::mat4 rotation3 = glm::rotate(glm::mat4(1), glm::radians(rotateZ), glm::vec3(0.0f, 0.0f, 1.0f));
+
+    return transtation * scale * rotation * rotation2 * rotation3;
 }
 
 
 glm::mat4 createModelMatrix(glm::vec3 positionInMap, float scale_) {
     glm::mat4 transtation = glm::translate(glm::mat4(1), positionInMap);
     glm::mat4 scale = glm::scale(glm::mat4(1.0f), glm::vec3(scale_, scale_, scale_));
-    glm::mat4 rotation = glm::rotate(glm::mat4(1), glm::radians(a), glm::vec3(0.0f, 1.0f, 0.0f));
+    glm::mat4 rotation = glm::rotate(glm::mat4(1), glm::radians(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
     return transtation * scale * rotation;
 }
@@ -50,7 +60,7 @@ glm::mat4 createViewMatrix() {
         // hacia adonde mira
         orientation,
         // arriba
-        glm::vec3(0, 1, 0)
+        uper
     );
 }
 

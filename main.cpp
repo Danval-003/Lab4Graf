@@ -1,326 +1,339 @@
 #include <SDL2/SDL.h>
+#include <cmath>
 #include <glm/geometric.hpp>
-#include <iostream>
-#include <glm/glm.hpp>
-#include <ostream>
 #include <vector>
-#include "color.h"
+#include <mutex>
+#include <thread>
+#include <iostream>
+#include <sstream>
 #include "framebuffer.h"
 #include "vertexGML.h"
 #include "objSettings.h"
 #include "uniform.h"
-#include <random>
-#include <thread>
-#include <mutex>
+#include <unordered_map>
 #include "render.h"
-#include <glm/gtx/vector_angle.hpp>
 
-using namespace std;
-
-// Dimensiones de la ventana
 const int SCREEN_WIDTH = pantallaAncho;
 const int SCREEN_HEIGHT = pantallaAlto;
 
-SDL_Window* window = nullptr;
-SDL_Renderer* renderer = nullptr;
+using FragmentRenderFunction = std::function<void(Fragment&)>;
 
-void init() {
-    SDL_Init(SDL_INIT_VIDEO);
-    window = SDL_CreateWindow("Software Renderer", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
-    renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+std::unordered_map<std::string, FragmentRenderFunction> renderFunctions;
+
+void initializeRenderFunctions() {
+    renderFunctions["sky"] = planet2FragmentShader;
+    renderFunctions["planet"] = planetFragmentShader;
+    renderFunctions["moon"] = moonFragmentShader;
+    renderFunctions["sun"] = sunFragmentShader;
+    renderFunctions["planet2"] = planet2FragmentShader;
+    renderFunctions["ship"] = planet2FragmentShader;
+    // Agrega más funciones para otros objetos aquí si es necesario
 }
 
-Uniform uniform;
-Uniform skyU;
+struct RenderData {
+    Uniform uniform{};
+    bool changed = false;
+    Uniform skyU{};
+    Uniform shipU{};
+    Uniform planet1U{};
+    Uniform planet2U{};
+    Uniform moon1U{};
+    Uniform sunU{};
+    std::vector<Facer> sphere;
+    std::vector<Facer> ship;
+    std::vector<Fragment> concurrentFragments;
+    std::mutex zbufferMutex;
+    glm::vec3 cameraOrientation{};
+    glm::vec3 sunPosition{};
+    float timeAni = 0.0f;
+    float bRotate = 0;
+    bool running = true;
+    float xRotate{};
+    float yRotate{};
+    glm::vec3 contraVector{};
+    float angle{};
+    float angley{};
+    float moveShipX = 0;
+    float moveShipZ = 0;
 
-std::vector<VertexGML> vertices_out;
-std::vector<Facer> sphere;
-
-std::vector<Facer> sun;
-std::vector<Facer> skyblock;
-std::vector<Facer> planet1;
-std::vector<Facer> moon1;
-std::vector<Fragment> concurrentFragments;
-std::mutex zbufferMutex;
-glm::vec3 cameraOrientation;
-
-bool isInFrontOfCamera(glm::vec3 pointToCheck){
-// Vector que apunta desde la cámara al punto
-    glm::vec3 vectorToPoint = pointToCheck - cameraPosition;
-
-// Calcula el ángulo entre los dos vectores
-    float angle = glm::angle(cameraOrientation, vectorToPoint);
-
-// Si el ángulo es mayor a 90 grados, el punto está detrás de la cámara
-    if (angle > glm::radians(90.0f)) {
-        return false;
-    } else {
-        return true;
+    RenderData() {
+        initializeRenderFunctions();
+        loadSphereData();
+        initializeCameraOrientation();
+        sunPosition = glm::vec3(0, 0, 0);
     }
-}
 
-void renderSkyFragment(Fragment& fragment) {
-    if (!(fragment.position.x < 0 || fragment.position.x >= pantallaAncho || fragment.position.y < 0 || fragment.position.y >= pantallaAlto) &&
-        fragment.position.z < zbuffer[fragment.position.y * pantallaAncho + fragment.position.x]) {
-        if (fragment.position.z < zbuffer[fragment.position.y * pantallaAncho + fragment.position.x] &&
-            isInFrontOfCamera(fragment.position)) {
-            skyFragmentShader(fragment);
-            zbufferMutex.lock();
-            framebuffer[fragment.position.y * pantallaAncho + fragment.position.x] = fragment.color;
-            zbufferMutex.unlock();
+    void loadSphereData() {
+        if (!loadOBJ("../sphere.obj", sphere)) {
+            std::cout << "No funcionó" << std::endl;
+        }
+        if (!loadOBJ("../ship5.obj", ship)) {
+            std::cout << "No funcionó" << std::endl;
+        }
+
+    }
+
+    void initializeCameraOrientation() {
+        xRotate = 89.0f;
+        yRotate = 0.0f;
+        orientation = glm::vec3(5.0f * sin(glm::radians(xRotate)) * cos(glm::radians(yRotate)), 5.0f * sin(glm::radians(yRotate)), -5.0f * cos(glm::radians(xRotate)) * cos(glm::radians(yRotate))) + cameraPosition;
+    }
+
+    void changeCamera(){
+        if(!changed){
+            cameraPosition = glm::vec3(0, 5, 0);
+            orientation = glm::vec3(0,0,0);
+            uper = glm::vec3(1, 0, 0);
+            changed = !changed;
+        }else{
+            cameraPosition = glm::vec3(0, 0, 5);
+            orientation = glm::vec3 (0, 0, 0);
+            uper = glm::vec3(0, 1, 0);
+            changed = !changed;
         }
     }
-}
 
-void renderPlanetFragment(Fragment& fragment) {
-    if (!(fragment.position.x < 0 || fragment.position.x >= pantallaAncho || fragment.position.y < 0 || fragment.position.y >= pantallaAlto) &&
-        fragment.position.z < zbuffer[fragment.position.y * pantallaAncho + fragment.position.x]) {
-        if (fragment.position.z < zbuffer[fragment.position.y * pantallaAncho + fragment.position.x]) {
-            planetFragmentShader(fragment);
-            zbufferMutex.lock();
-            framebuffer[fragment.position.y * pantallaAncho + fragment.position.x] = fragment.color;
-            zbuffer[fragment.position.y * pantallaAncho + fragment.position.x] = fragment.position.z;
-            zbufferMutex.unlock();
+// ... (resto del código)
+
+    void handleKeyPress(SDL_Keycode key) {
+        // Variables para el desplazamiento y rotación
+        float moveSpeed = 0.1f;
+        float rotateSpeed = 4.0f;
+
+        switch (key) {
+            case SDLK_SPACE:
+                cameraPosition += moveSpeed * uper * 5.0f;
+                orientation += moveSpeed * uper* 5.0f;
+                break;
+            case SDLK_v:
+                cameraPosition -= moveSpeed * uper * 5.0f;
+                orientation -= moveSpeed * uper* 5.0f;
+                break;
+            case SDLK_d:
+                // Mover hacia la derecha
+                cameraPosition += moveSpeed * glm::normalize(glm::cross(cameraOrientation, uper)) * 5.0f;
+                orientation += moveSpeed * glm::normalize(glm::cross(cameraOrientation, uper))* 5.0f;
+                break;
+            case SDLK_a:
+                // Mover hacia la izquierda
+                cameraPosition -= moveSpeed * glm::normalize(glm::cross(cameraOrientation, uper))* 5.0f;
+                orientation -= moveSpeed * glm::normalize(glm::cross(cameraOrientation, uper))* 5.0f;
+                break;
+            case SDLK_w:
+                // Mover hacia adelante
+                cameraPosition += moveSpeed * cameraOrientation;
+                orientation += moveSpeed * cameraOrientation;
+                break;
+            case SDLK_s:
+                // Mover hacia atrás
+                cameraPosition -= moveSpeed * cameraOrientation;
+                orientation -= moveSpeed * cameraOrientation;
+                break;
+            case SDLK_LEFT:
+                // Girar hacia la izquierda
+                xRotate -= rotateSpeed;
+                updateCameraOrientation();
+                moveShipZ = -3.14f * 2.0f;
+                break;
+            case SDLK_RIGHT:
+                // Girar hacia la derecha
+                xRotate += rotateSpeed;
+                updateCameraOrientation();
+                moveShipZ = 3.14f * 2.0f;
+                break;
+            case SDLK_DOWN:
+                // Mirar hacia abajo
+                yRotate = glm::clamp(yRotate + rotateSpeed, -80.0f, 80.0f);
+                updateCameraOrientation();
+                moveShipX = 3.14f * 2.0f;
+                break;
+            case SDLK_UP:
+                // Mirar hacia arriba
+                yRotate = glm::clamp(yRotate - rotateSpeed, -80.0f, 80.0f);
+                updateCameraOrientation();
+                moveShipX = -3.14f * 2.0f;
+                break;
+            case SDLK_m:
+                // Mirar hacia arriba
+                changeCamera();
+                break;
+            default:
+                break;
         }
     }
-}
 
-void renderMoonFragment(Fragment& fragment) {
-    if (!(fragment.position.x < 0 || fragment.position.x >= pantallaAncho || fragment.position.y < 0 || fragment.position.y >= pantallaAlto)) {
-        if (fragment.position.z < zbuffer[fragment.position.y * pantallaAncho + fragment.position.x]) {
-            moonFragmentShader(fragment);
-            zbufferMutex.lock();
-            framebuffer[fragment.position.y * pantallaAncho + fragment.position.x] = fragment.color;
-            zbuffer[fragment.position.y * pantallaAncho + fragment.position.x] = fragment.position.z;
-            zbufferMutex.unlock();
+
+    void updateCameraOrientation() const {
+        orientation = glm::vec3(5.0f * sin(glm::radians(xRotate)) * cos(glm::radians(yRotate)), 5.0f * sin(glm::radians(yRotate)), -5.0f * cos(glm::radians(xRotate)) * cos(glm::radians(yRotate))) + cameraPosition;
+    }
+
+    void renderFragment(const std::string& objectName, Fragment& fragment) {
+        int index = (int) (fragment.position.y * pantallaAncho + fragment.position.x);
+        if (!(fragment.position.x < 0 || fragment.position.x >= pantallaAncho || fragment.position.y < 0 || fragment.position.y >= pantallaAlto) &&
+            fragment.position.z < zbuffer[index]) {
+            if (fragment.position.z < zbuffer[index]) {
+                auto it = renderFunctions.find(objectName);
+                if (it != renderFunctions.end()) {
+                    FragmentRenderFunction renderFunction = it->second;
+                    renderFunction(fragment);
+                }
+                zbufferMutex.lock();
+                framebuffer[index] = fragment.color;
+                if (objectName != "sky") {
+                    zbuffer[index] = fragment.position.z;
+                }
+                zbufferMutex.unlock();
+            }
         }
     }
-}
 
-void renderSunFragment(Fragment& fragment) {
-    if (!(fragment.position.x < 0 || fragment.position.x >= pantallaAncho || fragment.position.y < 0 || fragment.position.y >= pantallaAlto) &&
-        fragment.position.z < zbuffer[fragment.position.y * pantallaAncho + fragment.position.x]) {
-        if (fragment.position.z < zbuffer[fragment.position.y * pantallaAncho + fragment.position.x]) {
-            sunFragmentShader(fragment);
-            zbufferMutex.lock();
-            framebuffer[fragment.position.y * pantallaAncho + fragment.position.x] = fragment.color;
-            zbuffer[fragment.position.y * pantallaAncho + fragment.position.x] = fragment.position.z;
-            zbufferMutex.unlock();
+    void renderBackground(){
+        for(float i = 0; i<pantallaAlto; i++){
+            for(float j = 0; j<pantallaAncho; j++){
+                glm::vec3 pos = glm::vec3(i, j, 0);
+
+                float xd = (cos(glm::radians(xRotate))<=0)? 1-cos(glm::radians(xRotate)) : cos(glm::radians(xRotate));
+                glm::vec3 offset = glm::vec3( xd,sin(glm::radians(yRotate)), 0);
+                float radio = sqrt(orientation.x*orientation.x + orientation.y*orientation.y + orientation.z*orientation.z);
+                /*glm::vec3 offset = glm::vec3(
+                        atan2(orientation.x, orientation.z),
+                        std::acos(orientation.y/radio),
+                        radio
+                        );*/
+                //glm::vec3 offset = orientation;
+                Color color = skyFragmentShader2(pos, offset);
+                framebuffer[i * pantallaAncho + j] = color;
+            }
         }
     }
-}
 
-// ...
+    void renderTriangles(const std::vector<Facer>& faces, const Uniform& shaderUniform, const std::string& objectName) {
+        for (const Facer& face : faces) {
+            if (face.vertexIndices.size() >= 3) {
+                VertexGML a = face.vertexIndices[0];
+                VertexGML b = face.vertexIndices[1];
+                VertexGML c = face.vertexIndices[2];
 
-void renderSkyTriangles(const std::vector<Facer>& faces, const Uniform& shaderUniform) {
-    for (const Facer& face : faces) {
-        if (face.vertexIndices.size() >= 3) {
-            VertexGML temA = face.vertexIndices[0];
-            VertexGML temB = face.vertexIndices[1];
-            VertexGML temC = face.vertexIndices[2];
+                a = vertexShader(a, shaderUniform);
+                b = vertexShader(b, shaderUniform);
+                c = vertexShader(c, shaderUniform);
 
-            VertexGML a = vertexShader(temA, shaderUniform);
-            VertexGML b = vertexShader(temB, shaderUniform);
-            VertexGML c = vertexShader(temC, shaderUniform);
+                if (( a.z <= 0) && ( b.z <= 0) && (c.z <= 0))
+                    continue;
 
-            if (!((a.position.x < 0 && b.position.x < 0 && c.position.x < 0) ||
-                  (a.position.x >= pantallaAncho && b.position.x >= pantallaAncho && c.position.x >= pantallaAncho) ||
-                  (a.position.y < 0 && b.position.y < 0 && c.position.y < 0) ||
-                  (a.position.y >= pantallaAlto && b.position.y >= pantallaAlto && c.position.y >= pantallaAlto))) {
+                if (!((a.position.x < 0 && b.position.x < 0 && c.position.x < 0) ||
+                      (a.position.x >= pantallaAncho && b.position.x >= pantallaAncho && c.position.x >= pantallaAncho) ||
+                      (a.position.y < 0 && b.position.y < 0 && c.position.y < 0) ||
+                      (a.position.y >= pantallaAlto && b.position.y >= pantallaAlto && c.position.y >= pantallaAlto))) {
 
-                a.normal = glm::normalize(glm::mat3(shaderUniform.model) * a.normal);
-                b.normal = glm::normalize(glm::mat3(shaderUniform.model) * b.normal);
-                c.normal = glm::normalize(glm::mat3(shaderUniform.model) * c.normal);
+                    a.normal = glm::normalize(glm::mat3(shaderUniform.model) * a.normal);
+                    b.normal = glm::normalize(glm::mat3(shaderUniform.model) * b.normal);
+                    c.normal = glm::normalize(glm::mat3(shaderUniform.model) * c.normal);
 
-                std::vector<Fragment> rasterizedTriangle = triangle_F(a, b, c);
+                    std::vector<Fragment> rasterizedTriangle = triangle_F(a, b, c);
 
-                for (Fragment& fragment : rasterizedTriangle) {
-                    renderSkyFragment(fragment);
+                    for (Fragment& fragment : rasterizedTriangle) {
+                        renderFragment(objectName, fragment);
+                    }
                 }
             }
         }
     }
-}
 
-void renderSunTriangles(const std::vector<Facer>& faces, const Uniform& shaderUniform) {
-    for (const Facer& face : faces) {
-        if (face.vertexIndices.size() >= 3) {
-            VertexGML temA = face.vertexIndices[0];
-            VertexGML temB = face.vertexIndices[1];
-            VertexGML temC = face.vertexIndices[2];
+    void render(SDL_Renderer* renderer) {
+        L = cameraPosition - orientation;
+        concurrentFragments.clear();
+        configPlanetNoiseGenerator();
+        cameraOrientation = orientation - cameraPosition;
+        glm::vec3 planet1Position = glm::vec3(-4.0f * std::cos(timeAni), 0, 4.0f * std::sin(timeAni)) + sunPosition;
+        glm::vec3 planet2Position = glm::vec3 (0,0,10);
+        glm::vec3 moon1Position = glm::vec3(-0.9f * cos(glm::radians(bRotate)), 0, 0.9f * sin(glm::radians(bRotate))) + planet1Position;
+        L2 = (glm::vec3(0, 0, 0) - planet1Position);
+        L3 = (moon1Position - planet1Position);
+        L5 = (glm::vec3(0, 0, 0) - moon1Position);
+        L4 = (planet1Position - moon1Position);
 
-            VertexGML a = vertexShader(temA, shaderUniform);
-            VertexGML b = vertexShader(temB, shaderUniform);
-            VertexGML c = vertexShader(temC, shaderUniform);
 
-            if (!((a.position.x < 0 && b.position.x < 0 && c.position.x < 0) ||
-                  (a.position.x >= pantallaAncho && b.position.x >= pantallaAncho && c.position.x >= pantallaAncho) ||
-                  (a.position.y < 0 && b.position.y < 0 && c.position.y < 0) ||
-                  (a.position.y >= pantallaAlto && b.position.y >= pantallaAlto && c.position.y >= pantallaAlto))) {
+        uniform.projection = createProjectionMatrix();
+        uniform.view = createViewMatrix();
+        uniform.viewport = createViewportMatrix();
 
-                a.normal = glm::normalize(glm::mat3(shaderUniform.model) * a.normal);
-                b.normal = glm::normalize(glm::mat3(shaderUniform.model) * b.normal);
-                c.normal = glm::normalize(glm::mat3(shaderUniform.model) * c.normal);
+        sunU.model = createModelMatrixPlanet(sunPosition, 4.0f, bRotate);
+        sunU.view = uniform.view;
+        sunU.viewport = uniform.viewport;
+        sunU.projection = uniform.projection;
 
-                std::vector<Fragment> rasterizedTriangle = triangle_F(a, b, c);
+        shipU.model = createModelMatrixPlanet(cameraOrientation /7.0f + cameraPosition +uper*0.15f, 0.2f, -xRotate, moveShipX + yRotate, moveShipZ);
+        shipU.view = uniform.view;
+        shipU.viewport = uniform.viewport;
+        shipU.projection = uniform.projection;
 
-                for (Fragment& fragment : rasterizedTriangle) {
-                    renderSunFragment(fragment);
-                }
-            }
+        planet1U.model = createModelMatrixPlanet(planet1Position, 0.9f, bRotate);
+        planet1U.view = uniform.view;
+        planet1U.viewport = uniform.viewport;
+        planet1U.projection = uniform.projection;
+
+        planet2U.model = createModelMatrixPlanet(planet2Position, 1.5f, bRotate);
+        planet2U.view = uniform.view;
+        planet2U.viewport = uniform.viewport;
+        planet2U.projection = uniform.projection;
+
+        moon1U.model = createModelMatrixPlanet(moon1Position, 0.4f, bRotate);
+        moon1U.view = uniform.view;
+        moon1U.viewport = uniform.viewport;
+        moon1U.projection = uniform.projection;
+
+        skyU.model = createModelMatrixPlanet(cameraPosition, 20.0f, -xRotate);
+        skyU.view = uniform.view;
+        skyU.viewport = uniform.viewport;
+        skyU.projection = uniform.projection;
+        configSunNoiseGenerator();
+
+        std::vector<std::thread> sunThreads;
+        std::vector<std::thread> skyblockThreads;
+        const size_t numThreads = std::thread::hardware_concurrency();
+
+        std::vector<std::vector<Facer>> threadWork(numThreads);
+        std::vector<std::vector<Facer>> threadWorkShip(numThreads);
+
+        for (size_t i = 0; i < sphere.size(); ++i) {
+            threadWork[i % numThreads].push_back(sphere[i]);
         }
-    }
-}
 
-void renderPlanetTriangles(const std::vector<Facer>& faces, const Uniform& shaderUniform) {
-    for (const Facer& face : faces) {
-        if (face.vertexIndices.size() >= 3) {
-            VertexGML temA = face.vertexIndices[0];
-            VertexGML temB = face.vertexIndices[1];
-            VertexGML temC = face.vertexIndices[2];
-
-            VertexGML a = vertexShader(temA, shaderUniform);
-            VertexGML b = vertexShader(temB, shaderUniform);
-            VertexGML c = vertexShader(temC, shaderUniform);
-
-            if (!((a.position.x < 0 && b.position.x < 0 && c.position.x < 0) ||
-                  (a.position.x >= pantallaAncho && b.position.x >= pantallaAncho && c.position.x >= pantallaAncho) ||
-                  (a.position.y < 0 && b.position.y < 0 && c.position.y < 0) ||
-                  (a.position.y >= pantallaAlto && b.position.y >= pantallaAlto && c.position.y >= pantallaAlto))) {
-
-                a.normal = glm::normalize(glm::mat3(shaderUniform.model) * a.normal);
-                b.normal = glm::normalize(glm::mat3(shaderUniform.model) * b.normal);
-                c.normal = glm::normalize(glm::mat3(shaderUniform.model) * c.normal);
-
-                std::vector<Fragment> rasterizedTriangle = triangle_F(a, b, c);
-
-                for (Fragment& fragment : rasterizedTriangle) {
-                    renderPlanetFragment(fragment);
-                }
-            }
+        for (size_t i = 0; i < ship.size(); ++i) {
+            threadWorkShip[i % numThreads].push_back(ship[i]);
         }
-    }
-}
 
-void renderMoonTriangles(const std::vector<Facer>& faces, const Uniform& shaderUniform) {
-    for (const Facer& face : faces) {
-        if (face.vertexIndices.size() >= 3) {
-            VertexGML temA = face.vertexIndices[0];
-            VertexGML temB = face.vertexIndices[1];
-            VertexGML temC = face.vertexIndices[2];
+       // renderBackground();
 
-            VertexGML a = vertexShader(temA, shaderUniform);
-            VertexGML b = vertexShader(temB, shaderUniform);
-            VertexGML c = vertexShader(temC, shaderUniform);
-
-            if (!((a.position.x < 0 && b.position.x < 0 && c.position.x < 0) ||
-                  (a.position.x >= pantallaAncho && b.position.x >= pantallaAncho && c.position.x >= pantallaAncho) ||
-                  (a.position.y < 0 && b.position.y < 0 && c.position.y < 0) ||
-                  (a.position.y >= pantallaAlto && b.position.y >= pantallaAlto && c.position.y >= pantallaAlto))) {
-
-                a.normal = glm::normalize(glm::mat3(shaderUniform.model) * a.normal);
-                b.normal = glm::normalize(glm::mat3(shaderUniform.model) * b.normal);
-                c.normal = glm::normalize(glm::mat3(shaderUniform.model) * c.normal);
-
-                std::vector<Fragment> rasterizedTriangle = triangle_F(a, b, c);
-
-                for (Fragment& fragment : rasterizedTriangle) {
-                    renderMoonFragment(fragment);
-                }
-            }
+        for (size_t i = 0; i < numThreads; ++i) {
+            skyblockThreads.emplace_back(&RenderData::renderTriangles, this, std::ref(threadWork[i]), std::ref(skyU), "sky");
         }
+
+        for (std::thread& t : skyblockThreads) {
+            t.join();
+        }
+
+        for (size_t i = 0; i < numThreads; ++i) {
+            sunThreads.emplace_back(&RenderData::renderTriangles, this, std::ref(threadWork[i]), std::ref(sunU), "sun");
+            sunThreads.emplace_back(&RenderData::renderTriangles, this, std::ref(threadWork[i]), std::ref(planet1U), "planet");
+            //sunThreads.emplace_back(&RenderData::renderTriangles, this, std::ref(threadWork[i]), std::ref(planet2U), "planet2");
+            //sunThreads.emplace_back(&RenderData::renderTriangles, this, std::ref(threadWork[i]), std::ref(moon1U), "moon");
+            sunThreads.emplace_back(&RenderData::renderTriangles, this, std::ref(threadWorkShip[i]), std::ref(shipU), "ship");
+        }
+
+        for (std::thread& t : sunThreads) {
+            t.join();
+        }
+
+        renderBuffer(renderer);
     }
-}
-
-Uniform planet1U;
-Uniform moon1U;
-
-glm::vec3 sunPosition = glm::vec3(0,0,0);
-
-void render(SDL_Renderer* renderer) {
-    concurrentFragments.clear();
-    configPlanetNoiseGenerator();
-    // Vector de orientación de la cámara (de la cámara al punto de mira)
-    cameraOrientation = orientation - cameraPosition;
-    glm::vec3 planet1Position = glm::vec3(-1.5f * cos(timeAni), 0, 1.5f * sin(timeAni)) + sunPosition;
-    glm::vec3 moon1Position = glm::vec3(-0.4f * cos(glm::radians(b)), 0, 0.4f * sin(glm::radians(b))) + planet1Position;
-    L2 = (glm::vec3(0,0,0) - planet1Position);
-    L3 = (moon1Position - planet1Position);
-    L5 = (glm::vec3(0,0,0) - moon1Position);
-    L4 = (planet1Position - moon1Position);
-
-    planet1U.model = createModelMatrixPlanet(planet1Position, 0.4f);
-    planet1U.projection = createProjectionMatrix();
-    planet1U.view = createViewMatrix();
-    planet1U.viewport = createViewportMatrix();
-
-    moon1U.model = createModelMatrixPlanet(moon1Position, 0.2f);
-    moon1U.projection = createProjectionMatrix();
-    moon1U.view = createViewMatrix();
-    moon1U.viewport = createViewportMatrix();
-
-    uniform.model = createModelMatrixPlanet(sunPosition, 1.5f);
-    uniform.projection = createProjectionMatrix();
-    uniform.view = createViewMatrix();
-    uniform.viewport = createViewportMatrix();
-
-    skyU.model = createModelMatrix(glm::vec3(0.0f, 0.0f, 0.0f), 10.0f);
-    skyU.projection = createProjectionMatrix();
-    skyU.viewport = createViewportMatrix();
-    skyU.view = createViewMatrix();
-    configSunNoiseGenerator();
-
-    std::vector<std::thread> sunThreads;
-    std::vector<std::thread> skyblockThreads;
-
-    // Divide el trabajo en partes iguales para los hilos
-    const size_t numThreads = std::thread::hardware_concurrency(); // Obtén el número de núcleos de la CPU
-    std::vector<std::vector<Facer>> threadWork(numThreads);
-
-    for (size_t i = 0; i < skyblock.size(); ++i) {
-        threadWork[i % numThreads].push_back(skyblock[i]);
-    }
-
-    // Inicia hilos para procesar los triángulos
-    for (size_t i = 0; i < numThreads; ++i) {
-        skyblockThreads.emplace_back(renderSkyTriangles, std::ref(threadWork[i]), std::ref(skyU));
-    }
-
-    for (std::thread& t : skyblockThreads) {
-        t.join();
-    }
-
-    for (size_t i = 0; i < numThreads; ++i) {
-        sunThreads.emplace_back(renderSunTriangles, std::ref(threadWork[i]), std::ref(uniform));
-        sunThreads.emplace_back(renderPlanetTriangles, std::ref(threadWork[i]), std::ref(planet1U));
-        sunThreads.emplace_back(renderMoonTriangles, std::ref(threadWork[i]), std::ref(moon1U));
-    }
-    
-
-    for (std::thread& t : sunThreads) {
-        t.join();
-    }
-
-
-
-    renderBuffer(renderer);
-}
-
-
+};
 
 int main(int argc, char* argv[]) {
-
-    if (!loadOBJ("../sphere.obj", sphere)) {
-        cout << "No funcionó" << endl;
-    }
-
-    for (Facer face : sphere) {
-        skyblock.push_back(face);
-    }
-
     SDL_Init(SDL_INIT_EVERYTHING);
 
-    SDL_Window* window = SDL_CreateWindow("Planetoide", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 0);
+    SDL_Window* window = SDL_CreateWindow("Planetoide", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, SCREEN_WIDTH, SCREEN_HEIGHT, 0);
 
     SDL_Renderer* renderer = SDL_CreateRenderer(
             window,
@@ -328,57 +341,37 @@ int main(int argc, char* argv[]) {
             SDL_RENDERER_ACCELERATED
     );
 
-    bool running = true;
-    SDL_Event event;
-    // Clear the framebuffer
-    Uint32 frameStart, frameTime;
+    RenderData renderData;
+    Uint32 frameTime;
 
-    while (running) {
+    while (renderData.running) {
+        SDL_Event event;
         while (SDL_PollEvent(&event)) {
 
+            renderData.moveShipZ = 0.0f;
+            renderData.moveShipX = 0.0f;
             switch (event.type) {
                 case SDL_QUIT:
-                    running = false;
+                    renderData.running = false;
                     break;
-                case SDL_KEYUP:
-                    if (event.key.keysym.sym == SDLK_w) {
-                        cameraPosition.y += 0.000001f;
-                    }
-                    else if (event.key.keysym.sym == SDLK_s) {
-                        cameraPosition.y -= 0.000001f;
-                    }
-                    else if (event.key.keysym.sym == SDLK_d) {
-                        cameraPosition.x += 0.000001f;
-                    }
-                    else if (event.key.keysym.sym == SDLK_a) {
-                        cameraPosition.x -= 0.000001f;
-                    }
+                case SDL_KEYDOWN:
+                    renderData.handleKeyPress(event.key.keysym.sym);
                     break;
             }
         }
 
         clear();
-
-        // Call our render function
-        render(renderer);
-
-        // Present the frame buffer to the screen
+        renderData.render(renderer);
         SDL_RenderPresent(renderer);
-        timeAni += 0.05f;
-        frameTime = SDL_GetTicks() - frameStart;
+        renderData.timeAni += 0.05f;
+        frameTime = frameTime - SDL_GetTicks();
 
-        // Calculate frames per second and update window title
         if (frameTime > 0) {
             std::ostringstream titleStream;
-            titleStream << "FPS: " << 1000.0 / frameTime;  // Milliseconds to seconds
+            titleStream << "FPS: " << 1000.0 / frameTime;
             SDL_SetWindowTitle(window, titleStream.str().c_str());
         }
-        b++;
-        if(!moonToPlanet && multiplier < 0){
-            multiplier+=0.1f;
-        } else if (moonToPlanet && multiplier > 1.0f){
-            multiplier-=0.1f;
-        }
+        renderData.bRotate++;
     }
 
     SDL_DestroyRenderer(renderer);
