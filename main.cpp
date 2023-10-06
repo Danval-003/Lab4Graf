@@ -5,28 +5,38 @@
 #include <mutex>
 #include <thread>
 #include <iostream>
-#include <sstream>
 #include "framebuffer.h"
 #include "vertexGML.h"
 #include "objSettings.h"
 #include "uniform.h"
 #include <unordered_map>
+#include <random>
 #include "render.h"
 
 const int SCREEN_WIDTH = pantallaAncho;
 const int SCREEN_HEIGHT = pantallaAlto;
+
+struct Particle {
+    glm::vec3 position;
+    glm::vec3 velocity;
+    float scale;
+    float life;
+    glm::vec4 color; // Color de la partícula (RGBA)
+};
+
 
 using FragmentRenderFunction = std::function<void(Fragment&)>;
 
 std::unordered_map<std::string, FragmentRenderFunction> renderFunctions;
 
 void initializeRenderFunctions() {
-    renderFunctions["sky"] = planet2FragmentShader;
+    renderFunctions["sky"] = skyFragmentShader;
     renderFunctions["planet"] = planetFragmentShader;
     renderFunctions["moon"] = moonFragmentShader;
     renderFunctions["sun"] = sunFragmentShader;
     renderFunctions["planet2"] = planet2FragmentShader;
-    renderFunctions["ship"] = planet2FragmentShader;
+    renderFunctions["planet3"] = planet3FragmentShader;
+    renderFunctions["ship"] = shipFragmentShader;
     // Agrega más funciones para otros objetos aquí si es necesario
 }
 
@@ -37,6 +47,7 @@ struct RenderData {
     Uniform shipU{};
     Uniform planet1U{};
     Uniform planet2U{};
+    Uniform planet3U{};
     Uniform moon1U{};
     Uniform sunU{};
     std::vector<Facer> sphere;
@@ -45,7 +56,10 @@ struct RenderData {
     std::mutex zbufferMutex;
     glm::vec3 cameraOrientation{};
     glm::vec3 sunPosition{};
-    float timeAni = 0.0f;
+    glm::vec3 shipPos;
+    float planetRotation1 = 0.0f;
+    float planetRotation2 = 1.5f;
+    float planetRotation3 = 0.0f;
     float bRotate = 0;
     bool running = true;
     float xRotate{};
@@ -55,6 +69,8 @@ struct RenderData {
     float angley{};
     float moveShipX = 0;
     float moveShipZ = 0;
+    float positionShip = 0;
+    std::vector<Particle> particles;
 
     RenderData() {
         initializeRenderFunctions();
@@ -74,7 +90,7 @@ struct RenderData {
     }
 
     void initializeCameraOrientation() {
-        xRotate = 89.0f;
+        xRotate = 180.0f;
         yRotate = 0.0f;
         orientation = glm::vec3(5.0f * sin(glm::radians(xRotate)) * cos(glm::radians(yRotate)), 5.0f * sin(glm::radians(yRotate)), -5.0f * cos(glm::radians(xRotate)) * cos(glm::radians(yRotate))) + cameraPosition;
     }
@@ -187,25 +203,6 @@ struct RenderData {
         }
     }
 
-    void renderBackground(){
-        for(float i = 0; i<pantallaAlto; i++){
-            for(float j = 0; j<pantallaAncho; j++){
-                glm::vec3 pos = glm::vec3(i, j, 0);
-
-                float xd = (cos(glm::radians(xRotate))<=0)? 1-cos(glm::radians(xRotate)) : cos(glm::radians(xRotate));
-                glm::vec3 offset = glm::vec3( xd,sin(glm::radians(yRotate)), 0);
-                float radio = sqrt(orientation.x*orientation.x + orientation.y*orientation.y + orientation.z*orientation.z);
-                /*glm::vec3 offset = glm::vec3(
-                        atan2(orientation.x, orientation.z),
-                        std::acos(orientation.y/radio),
-                        radio
-                        );*/
-                //glm::vec3 offset = orientation;
-                Color color = skyFragmentShader2(pos, offset);
-                framebuffer[i * pantallaAncho + j] = color;
-            }
-        }
-    }
 
     void renderTriangles(const std::vector<Facer>& faces, const Uniform& shaderUniform, const std::string& objectName) {
         for (const Facer& face : faces) {
@@ -218,7 +215,7 @@ struct RenderData {
                 b = vertexShader(b, shaderUniform);
                 c = vertexShader(c, shaderUniform);
 
-                if (( a.z <= 0) && ( b.z <= 0) && (c.z <= 0))
+                if (( a.z <= 1e-10 || a.w<=1e-10) && ( b.z <= 1e-10 || b.w<=1e-10) && (c.z <= 1e-10|| c.w<=1e-10))
                     continue;
 
                 if (!((a.position.x < 0 && b.position.x < 0 && c.position.x < 0) ||
@@ -240,50 +237,61 @@ struct RenderData {
         }
     }
 
+
     void render(SDL_Renderer* renderer) {
         L = cameraPosition - orientation;
         concurrentFragments.clear();
         configPlanetNoiseGenerator();
         cameraOrientation = orientation - cameraPosition;
-        glm::vec3 planet1Position = glm::vec3(-4.0f * std::cos(timeAni), 0, 4.0f * std::sin(timeAni)) + sunPosition;
-        glm::vec3 planet2Position = glm::vec3 (0,0,10);
-        glm::vec3 moon1Position = glm::vec3(-0.9f * cos(glm::radians(bRotate)), 0, 0.9f * sin(glm::radians(bRotate))) + planet1Position;
+        glm::vec3 planet1Position = glm::vec3(-2.5f * std::cos(planetRotation1), 0, 2.5f * std::sin(planetRotation1)) + sunPosition;
+        shipPos = cameraOrientation /8.5f + cameraPosition +uper*0.15f;
+        glm::vec3 planet2Position = glm::vec3(-1.5f * std::cos(planetRotation2), 0, 1.5f * std::sin(planetRotation2)) + sunPosition;
+        glm::vec3 planet3Position = glm::vec3(0,0,10);
+        glm::vec3 moon1Position = glm::vec3(-0.4f * cos(glm::radians(bRotate)), 0, 0.4f * sin(glm::radians(bRotate))) + planet1Position;
         L2 = (glm::vec3(0, 0, 0) - planet1Position);
+        L6 = (glm::vec3(0, 0, 0) - planet2Position);
         L3 = (moon1Position - planet1Position);
         L5 = (glm::vec3(0, 0, 0) - moon1Position);
         L4 = (planet1Position - moon1Position);
+
+        sunPos = sunPosition - shipPos;
 
 
         uniform.projection = createProjectionMatrix();
         uniform.view = createViewMatrix();
         uniform.viewport = createViewportMatrix();
 
-        sunU.model = createModelMatrixPlanet(sunPosition, 4.0f, bRotate);
+        sunU.model = createModelMatrixPlanet(sunPosition, 2.0f, bRotate);
         sunU.view = uniform.view;
         sunU.viewport = uniform.viewport;
         sunU.projection = uniform.projection;
 
-        shipU.model = createModelMatrixPlanet(cameraOrientation /7.0f + cameraPosition +uper*0.15f, 0.2f, -xRotate, moveShipX + yRotate, moveShipZ);
+        shipU.model = createModelMatrixPlanet(shipPos, 0.1f, -xRotate, moveShipX + yRotate, moveShipZ);
         shipU.view = uniform.view;
         shipU.viewport = uniform.viewport;
         shipU.projection = uniform.projection;
 
-        planet1U.model = createModelMatrixPlanet(planet1Position, 0.9f, bRotate);
+        planet1U.model = createModelMatrixPlanet(planet1Position, 0.4f, bRotate);
         planet1U.view = uniform.view;
         planet1U.viewport = uniform.viewport;
         planet1U.projection = uniform.projection;
 
-        planet2U.model = createModelMatrixPlanet(planet2Position, 1.5f, bRotate);
+        planet2U.model = createModelMatrixPlanet(planet2Position, 0.25f, bRotate);
         planet2U.view = uniform.view;
         planet2U.viewport = uniform.viewport;
         planet2U.projection = uniform.projection;
 
-        moon1U.model = createModelMatrixPlanet(moon1Position, 0.4f, bRotate);
+        planet3U.model = createModelMatrixPlanet(planet3Position, 1.0f, bRotate);
+        planet3U.view = uniform.view;
+        planet3U.viewport = uniform.viewport;
+        planet3U.projection = uniform.projection;
+
+        moon1U.model = createModelMatrixPlanet(moon1Position, 0.2f, bRotate);
         moon1U.view = uniform.view;
         moon1U.viewport = uniform.viewport;
         moon1U.projection = uniform.projection;
 
-        skyU.model = createModelMatrixPlanet(cameraPosition, 20.0f, -xRotate);
+        skyU.model = createModelMatrixPlanet((orientation-cameraPosition)*0.2f + cameraPosition, 3.0f, -xRotate);
         skyU.view = uniform.view;
         skyU.viewport = uniform.viewport;
         skyU.projection = uniform.projection;
@@ -306,20 +314,33 @@ struct RenderData {
 
        // renderBackground();
 
-        for (size_t i = 0; i < numThreads; ++i) {
+        /*for (size_t i = 0; i < numThreads; ++i) {
             skyblockThreads.emplace_back(&RenderData::renderTriangles, this, std::ref(threadWork[i]), std::ref(skyU), "sky");
         }
 
         for (std::thread& t : skyblockThreads) {
             t.join();
-        }
+        }*/
 
         for (size_t i = 0; i < numThreads; ++i) {
-            sunThreads.emplace_back(&RenderData::renderTriangles, this, std::ref(threadWork[i]), std::ref(sunU), "sun");
-            sunThreads.emplace_back(&RenderData::renderTriangles, this, std::ref(threadWork[i]), std::ref(planet1U), "planet");
-            //sunThreads.emplace_back(&RenderData::renderTriangles, this, std::ref(threadWork[i]), std::ref(planet2U), "planet2");
-            //sunThreads.emplace_back(&RenderData::renderTriangles, this, std::ref(threadWork[i]), std::ref(moon1U), "moon");
-            sunThreads.emplace_back(&RenderData::renderTriangles, this, std::ref(threadWorkShip[i]), std::ref(shipU), "ship");
+            sunThreads.emplace_back(&RenderData::renderTriangles, this,
+                                    std::ref(threadWork[i]),
+                                    std::ref(sunU), "sun");
+            sunThreads.emplace_back(&RenderData::renderTriangles, this,
+                                    std::ref(threadWork[i]),
+                                    std::ref(planet1U), "planet");
+            sunThreads.emplace_back(&RenderData::renderTriangles, this,
+                                    std::ref(threadWork[i]),
+                                    std::ref(planet2U), "planet2");
+            sunThreads.emplace_back(&RenderData::renderTriangles, this,
+                                    std::ref(threadWork[i]),
+                                    std::ref(planet3U), "planet3");
+            sunThreads.emplace_back(&RenderData::renderTriangles, this,
+                                    std::ref(threadWork[i]),
+                                    std::ref(moon1U), "moon");
+            sunThreads.emplace_back(&RenderData::renderTriangles, this,
+                                    std::ref(threadWorkShip[i]),
+                                    std::ref(shipU), "ship");
         }
 
         for (std::thread& t : sunThreads) {
@@ -328,6 +349,7 @@ struct RenderData {
 
         renderBuffer(renderer);
     }
+
 };
 
 int main(int argc, char* argv[]) {
@@ -342,7 +364,10 @@ int main(int argc, char* argv[]) {
     );
 
     RenderData renderData;
-    Uint32 frameTime;
+    Uint32 frameStart = SDL_GetTicks();;      // Tiempo de inicio del cuadro actual
+    Uint32 frameTime;       // Tiempo transcurrido en el cuadro actual
+    int frameCount = 0;     // Contador de cuadros renderizados
+    int fps = 0;
 
     while (renderData.running) {
         SDL_Event event;
@@ -363,14 +388,17 @@ int main(int argc, char* argv[]) {
         clear();
         renderData.render(renderer);
         SDL_RenderPresent(renderer);
-        renderData.timeAni += 0.05f;
-        frameTime = frameTime - SDL_GetTicks();
-
-        if (frameTime > 0) {
-            std::ostringstream titleStream;
-            titleStream << "FPS: " << 1000.0 / frameTime;
-            SDL_SetWindowTitle(window, titleStream.str().c_str());
+        renderData.planetRotation1 += 0.02f;
+        renderData.planetRotation2 += 0.01f;
+        frameTime = SDL_GetTicks() - frameStart;
+        frameCount++;
+        if (frameTime >= 1000) {
+            fps = frameCount;
+            frameCount = 0;
+            frameStart = SDL_GetTicks(); // Reinicia el tiempo de inicio para el siguiente segundo
         }
+        std::string fpsText = "FPS: " + std::to_string(fps);
+        SDL_SetWindowTitle(window, fpsText.c_str());
         renderData.bRotate++;
     }
 

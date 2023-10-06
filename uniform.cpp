@@ -93,6 +93,15 @@ glm::mat4 createProjectionMatrix() {
   return glm::perspective(glm::radians(fovInDegrees), aspectRatio, nearClip, farClip);
 }
 
+glm::mat4 createProjectionMatrix(float scale) {
+    float fovInDegrees = 45.0f;
+    float aspectRatio = static_cast<float>(pantallaAncho) / pantallaAlto;
+    float nearClip = 0.1f * scale;
+    float farClip = 100.0f;
+
+    return glm::perspective(glm::radians(fovInDegrees), aspectRatio, nearClip, farClip);
+}
+
 glm::mat4 createViewportMatrix() {
     glm::mat4 viewport = glm::mat4(1.0f);
 

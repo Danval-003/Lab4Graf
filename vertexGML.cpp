@@ -10,10 +10,12 @@
 #include <mutex>
 
 glm::vec3 L = glm::vec3(0.0f, 0, 1.0f);
+glm::vec3 sunPos = glm::vec3(0.0f, 0, 1.0f);
 glm::vec3 L2 = glm::vec3(0.0f, 0, 1.0f);
 glm::vec3 L3 = glm::vec3(0.0f, 0, -1.0f);
 glm::vec3 L4 = glm::vec3(0.0f, 0, 1.0f);
 glm::vec3 L5 = glm::vec3(0.0f, 0, -1.0f);
+glm::vec3 L6 = glm::vec3(0.0f, 0, -1.0f);
 
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -64,7 +66,8 @@ std::vector<Fragment> triangle_F(VertexGML a, VertexGML b, VertexGML c) {
             if (w < epsilon || v < epsilon || u < epsilon)
                 continue;
             double worldZ = a.z * w + b.z * v + c.z * u;
-            if(worldZ<=0)
+            double worldW = a.w * w + b.w * v + c.w * u;
+            if(worldZ<=1e-10 || worldW<=1e-10)
                 continue;
 
             double z = A.z * w + B.z * v + C.z * u;
@@ -102,6 +105,7 @@ VertexGML vertexShader(const VertexGML& vertex, const Uniform& u) {
 
   glm::vec4 r =  u.projection * u.view * u.model * v;
   double z = r.z;
+  double w = r.w;
   r= u.viewport * r;
 
   return VertexGML{
@@ -110,7 +114,8 @@ VertexGML vertexShader(const VertexGML& vertex, const Uniform& u) {
     vertex.color,
     vertex.normal,
     vertex.texture,
-    z
+    z,
+    w
   };
 };
 
@@ -141,7 +146,6 @@ void sunFragmentShader(Fragment& fragment) {
 }
 
 void planetFragmentShader(Fragment& fragment) {
-
     glm::vec3 groundColor = glm::vec3(0.0f/255.0f,105.0f/255.0f, 148.0f/255.0f);
     glm::vec3 oceanColor = glm::vec3(0.0f/255.0f,143.0f/255.0f, 57.0f/255.0f);
     glm::vec3 cloudColor = glm::vec3(255.0f/255.0f,255.0f/255.0f, 255.0f/255.0f);
@@ -163,7 +167,7 @@ void planetFragmentShader(Fragment& fragment) {
     tmpColor = (noiseValueC<0.8f && noiseValueC > 0.5f)? glm::mix(cloudColor, tmpColor, noiseValueC): tmpColor;
     tmpColor =(intensity<=1)? glm::mix(glm::vec3(0,0,0),tmpColor, intensity): tmpColor;
     if(intensity>0.05f){
-        if(intensity2<1 && intensity2>0.58f){
+        if(intensity2<1 && intensity2>0.3f){
             tmpColor = glm::mix(tmpColor,glm::vec3(0,0,0), intensity2);
         }
     }
@@ -175,6 +179,30 @@ void planetFragmentShader(Fragment& fragment) {
 }
 
 void planet2FragmentShader(Fragment& fragment) {
+
+    glm::vec3 groundColor = glm::vec3(205.0f/255.0f,205.0f/255.0f, 205.0f/255.0f);
+    glm::vec3 oceanColor = glm::vec3(105.0f/255.0f,105.0f/255.0f, 105.0f/255.0f);
+    glm::vec3 cloudColor = glm::vec3(255.0f/255.0f,255.0f/255.0f, 255.0f/255.0f);
+    glm::vec3 uv = glm::vec3(fragment.original.x, fragment.original.y, fragment.original.z) ;
+    float intensity = glm::dot(fragment.normal, L6);
+    //float intensity2 = glm::dot(fragment.normal, L3 * 2.0f);
+    //float intensity = fragment.intensity;
+    float oxE = 3000;
+    float oyE = 3000;
+    float zoomE = 700;
+
+    float noiseValue = abs(planet2Generator.GetNoise((uv.x + oxE) * zoomE/5.0f, (uv.y + oyE) * zoomE/5.0f, uv.z * zoomE/5.0f)) ;
+
+    intensity = (intensity< 0.05f)? 0.05f: intensity;
+    //intensity2 = (intensity2< 0.05f)? 0.05f: intensity2;
+
+    glm::vec3 tmpColor =  glm::mix(oceanColor, groundColor, noiseValue);
+    tmpColor =(intensity<=1)? glm::mix(glm::vec3(0,0,0),tmpColor, intensity): tmpColor;
+
+    fragment.color = Color(tmpColor.x, tmpColor.y, tmpColor.z);
+}
+
+void planet3FragmentShader(Fragment& fragment) {
 
     glm::vec3 groundColor = glm::vec3(205.0f/255.0f,205.0f/255.0f, 205.0f/255.0f);
     glm::vec3 oceanColor = glm::vec3(105.0f/255.0f,105.0f/255.0f, 105.0f/255.0f);
@@ -300,7 +328,7 @@ void configPlanetNoiseGenerator(){
 const double starDensity = 0.0005; // Mayor densidad = más estrellas
 
 
-uint32_t fnv1aHash(float x, float y, float z) {
+uint32_t ese(float x, float y, float z) {
     uint32_t hash = 2166136261u; // Valor inicial del hash
     const uint32_t prime = 16777619u; // Factor primo
 
@@ -317,7 +345,7 @@ uint32_t fnv1aHash(float x, float y, float z) {
 
 void skyFragmentShader(Fragment& fragment) {
 
-    uint32_t hash = fnv1aHash(fragment.original.x, fragment.original.y, fragment.original.z);
+    uint32_t hash = ese(fragment.original.x, fragment.original.y, fragment.original.z);
     float normalizedHash = static_cast<float>(hash) / static_cast<float>(UINT32_MAX);
 
     Color color = (normalizedHash < starDensity) ? Color(244, 244, 244): BLACK;
@@ -349,13 +377,24 @@ Color skyFragmentShader2(glm::vec3& pos, glm::vec3& offset ) {
 
 
 void shipFragmentShader(Fragment& fragment) {
-    float intensity = abs(glm::dot(fragment.normal, L));
-    glm::vec3 oceanColor = glm::vec3(67.0f/255.0f,75.0f/255.0f, 77.0f/255.0f);
+    glm::vec3 groundColor = glm::vec3(205.0f/255.0f,205.0f/255.0f, 205.0f/255.0f);
+    glm::vec3 oceanColor = glm::vec3(105.0f/255.0f,105.0f/255.0f, 105.0f/255.0f);
+    glm::vec3 cloudColor = glm::vec3(255.0f/255.0f,255.0f/255.0f, 255.0f/255.0f);
+    glm::vec3 uv = glm::vec3(fragment.original.x, fragment.original.y, fragment.original.z) ;
+    float intensity = glm::dot(fragment.normal, sunPos);
+    //float intensity2 = glm::dot(fragment.normal, L3 * 2.0f);
+    //float intensity = fragment.intensity;
+    float oxE = 3000;
+    float oyE = 3000;
+    float zoomE = 700;
 
-    intensity= (intensity>1)? 1.0f: intensity;
+    float noiseValue = abs(planet2Generator.GetNoise((uv.x + oxE) * zoomE/5.0f, (uv.y + oyE) * zoomE/5.0f, uv.z * zoomE/5.0f)) ;
 
-    glm::vec3 tmpColor = glm::mix(oceanColor, glm::vec3(0,0,0), 1-intensity);
+    intensity = (intensity< 0.1f)? 0.1f: intensity;
+    //intensity2 = (intensity2< 0.05f)? 0.05f: intensity2;
 
+    glm::vec3 tmpColor =  glm::mix(oceanColor, groundColor, noiseValue);
+    tmpColor =(intensity<=1)? glm::mix(glm::vec3(0,0,0),tmpColor, intensity): tmpColor;
 
     fragment.color = Color(tmpColor.x, tmpColor.y, tmpColor.z);
 }

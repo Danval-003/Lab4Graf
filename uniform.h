@@ -24,6 +24,7 @@ glm::mat4 createViewportMatrix();
 void configureUniform(Uniform* u);
 glm::mat4 createModelMatrixPlanet();
 void configureUniformPlanet(Uniform* u);
+glm::mat4 createProjectionMatrix(float scale);
 
 
 glm::mat4 createViewMatrix(glm::vec3 positionInMap, float rotation);

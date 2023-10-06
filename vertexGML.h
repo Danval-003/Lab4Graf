@@ -8,10 +8,12 @@
 
 extern float timeAni;
 extern glm::vec3 L;
+extern glm::vec3 sunPos;
 extern glm::vec3 L2;
 extern glm::vec3 L3;
 extern glm::vec3 L4;
 extern glm::vec3 L5;
+extern glm::vec3 L6;
 extern bool moonToPlanet;
 extern float multiplier;
 
@@ -32,6 +34,7 @@ struct VertexGML {
     glm::vec3 normal;
     glm::vec2 texture;
     double z;
+    double w;
 };
 
 struct Facer {
@@ -54,6 +57,7 @@ void skyFragmentShader(Fragment& fragment);
 void configSunNoiseGenerator();
 void planetFragmentShader(Fragment& fragment);
 void planet2FragmentShader(Fragment& fragment);
+void planet3FragmentShader(Fragment& fragment);
 void configPlanetNoiseGenerator();
 void moonFragmentShader(Fragment& fragment);
 void shipFragmentShader(Fragment& fragment);

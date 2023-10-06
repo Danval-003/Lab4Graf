@@ -17,3 +17,4 @@ extern Color clearColor;
 // Función para limpiar el framebuffer con el color clearColor
 void clear();
 
+
