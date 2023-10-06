@@ -1,5 +1,11 @@
 # Proyecto 1 Sistema solar
 # Sistema Solar 3D en C++
+### Video presentación
+
+<video width="320" height="240" controls>
+  <source src="https://youtu.be/2W8qOz7SgZw" type="video/mp4">
+  Tu navegador no soporta la reproducción de videos.
+</video>
 
 Este proyecto de simulación en C++ crea un sistema solar en 3D utilizando la biblioteca SDL2 y OpenGL. Permite al usuario explorar y observar el sistema solar desde diferentes ángulos y perspectivas. El proyecto incluye representaciones en 3D de planetas, una nave espacial y el sol, todos los cuales pueden ser explorados y observados desde una cámara en primera persona.
 
