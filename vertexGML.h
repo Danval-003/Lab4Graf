@@ -62,5 +62,7 @@ void configPlanetNoiseGenerator();
 void moonFragmentShader(Fragment& fragment);
 void shipFragmentShader(Fragment& fragment);
 Color skyFragmentShader2(glm::vec3& pos, glm::vec3& offset );
+void planet4FragmentShader(Fragment& fragment);
+void planet5FragmentShader(Fragment& fragment);
 
 

@@ -6,6 +6,7 @@
 #include <SDL2/SDL_timer.h>
 #include <cmath>
 #include <glm/common.hpp>
+#include <glm/fwd.hpp>
 #include <random>
 #include <mutex>
 
@@ -135,6 +136,9 @@ glm::vec3 iluminationSun = glm::vec3(1.0f, 110.0f/255.0f, 0.0f);
 void sunFragmentShader(Fragment& fragment) {
     glm::vec3 uv = glm::vec3(fragment.original.x, fragment.original.y, fragment.original.z) ;
     /* glm::vec2 uv = glm::vec2(fragment.texCoords.x, fragment.texCoords.y) */;
+    ox = 3000.0f+ std::sin(timeAni)*0.02f;
+    oy =3000.0f+ std::sin(timeAni*0.3f)*0.02f;
+    zoom =1300.0f;
     float noiseValue = abs(sunNoiseGenerator.GetNoise((uv.x + ox) * zoom, (uv.y + oy) * zoom, uv.z * zoom)) ;
     float intensity = glm::dot(fragment.normal, L);
     intensity = (intensity>1)? 1.0f: intensity;
@@ -151,23 +155,26 @@ void planetFragmentShader(Fragment& fragment) {
     glm::vec3 cloudColor = glm::vec3(255.0f/255.0f,255.0f/255.0f, 255.0f/255.0f);
     glm::vec3 uv = glm::vec3(fragment.original.x, fragment.original.y, fragment.original.z) ;
     float intensity = glm::dot(fragment.normal, L2);
-    float intensity2 = glm::dot(fragment.normal, L3);
+    float intensity2 = glm::dot(fragment.normal, L3 * 1.0f/3.0f);
     //float intensity = fragment.intensity;
     float oxE = 3000;
     float oyE = 3000;
     float zoomE = 700;
+    ox = 3000.0f+ std::sin(timeAni)*0.02f;
+    oy =3000.0f+ std::sin(timeAni*0.3f)*0.02f;
+    zoom =1300.0f;
 
     float noiseValue = abs(planetContientNoiseGenerator.GetNoise((uv.x + oxE) * zoomE, (uv.y + oyE) * zoomE, uv.z * zoomE)) ;
-    float noiseValueC = abs(planetContientNoiseGenerator.GetNoise((uv.x + ox) * zoom/3.0f, (uv.y + oy) * zoom/3.0f, uv.z * zoom/3.0f)) ;
-
+    float noiseValueC = abs(planetContientNoiseGenerator.GetNoise((uv.x + ox) * zoom/3.0f + timeAni *10.f, (uv.y + oy) * zoom/3.0f, uv.z * zoom/3.0f)) ;
     intensity = (intensity< 0.05f)? 0.05f: intensity;
     intensity2 = (intensity2< 0.05f)? 0.05f: intensity2;
+    intensity2 = (intensity2> 0.9f)? 0.9f: intensity2;
 
     glm::vec3 tmpColor =  (noiseValue>0.5f)? oceanColor: groundColor;
-    tmpColor = (noiseValueC<0.8f && noiseValueC > 0.5f)? glm::mix(cloudColor, tmpColor, noiseValueC): tmpColor;
+    tmpColor = (noiseValueC<1.0f && noiseValueC > 0.5f)? glm::mix(cloudColor, tmpColor, noiseValueC): tmpColor;
     tmpColor =(intensity<=1)? glm::mix(glm::vec3(0,0,0),tmpColor, intensity): tmpColor;
     if(intensity>0.05f){
-        if(intensity2<1 && intensity2>0.3f){
+        if(intensity2<1 && intensity2>0.6f){
             tmpColor = glm::mix(tmpColor,glm::vec3(0,0,0), intensity2);
         }
     }
@@ -184,8 +191,8 @@ void planet2FragmentShader(Fragment& fragment) {
     glm::vec3 oceanColor = glm::vec3(105.0f/255.0f,105.0f/255.0f, 105.0f/255.0f);
     glm::vec3 cloudColor = glm::vec3(255.0f/255.0f,255.0f/255.0f, 255.0f/255.0f);
     glm::vec3 uv = glm::vec3(fragment.original.x, fragment.original.y, fragment.original.z) ;
-    float intensity = glm::dot(fragment.normal, L6);
-    //float intensity2 = glm::dot(fragment.normal, L3 * 2.0f);
+    float intensity = glm::dot(fragment.normal, L2);
+    float intensity2 = glm::dot(fragment.normal, L3 * 1.0f/3.0f);
     //float intensity = fragment.intensity;
     float oxE = 3000;
     float oyE = 3000;
@@ -198,14 +205,23 @@ void planet2FragmentShader(Fragment& fragment) {
 
     glm::vec3 tmpColor =  glm::mix(oceanColor, groundColor, noiseValue);
     tmpColor =(intensity<=1)? glm::mix(glm::vec3(0,0,0),tmpColor, intensity): tmpColor;
+    if(intensity>0.05f){
+        if(intensity2<1 && intensity2>0.6f){
+            tmpColor = glm::mix(tmpColor,glm::vec3(0,0,0), intensity2);
+        }
+    }
+    else{
+        tmpColor = tmpColor;
+    }
+
 
     fragment.color = Color(tmpColor.x, tmpColor.y, tmpColor.z);
 }
 
 void planet3FragmentShader(Fragment& fragment) {
 
-    glm::vec3 groundColor = glm::vec3(205.0f/255.0f,205.0f/255.0f, 205.0f/255.0f);
-    glm::vec3 oceanColor = glm::vec3(105.0f/255.0f,105.0f/255.0f, 105.0f/255.0f);
+    glm::vec3 groundColor = glm::vec3(0.0f/255.0f,0.0f/255.0f, 205.0f/255.0f);
+    glm::vec3 oceanColor = glm::vec3(105.0f/255.0f,105.0f/255.0f, 205.0f/255.0f);
     glm::vec3 cloudColor = glm::vec3(255.0f/255.0f,255.0f/255.0f, 255.0f/255.0f);
     glm::vec3 uv = glm::vec3(fragment.original.x, fragment.original.y, fragment.original.z) ;
     float intensity = glm::dot(fragment.normal, L);
@@ -215,12 +231,75 @@ void planet3FragmentShader(Fragment& fragment) {
     float oyE = 3000;
     float zoomE = 700;
 
-    float noiseValue = abs(planet2Generator.GetNoise((uv.x + oxE) * zoomE/5.0f, (uv.y + oyE) * zoomE/5.0f, uv.z * zoomE/5.0f)) ;
+    float noiseValue = abs(sunNoiseGenerator.GetNoise((uv.x + oxE) * zoomE/5.0f, (uv.y + oyE) * zoomE/5.0f, uv.z * zoomE/5.0f)) ;
 
     intensity = (intensity< 0.05f)? 0.05f: intensity;
     //intensity2 = (intensity2< 0.05f)? 0.05f: intensity2;
 
     glm::vec3 tmpColor =  glm::mix(oceanColor, groundColor, noiseValue);
+    tmpColor =(intensity<=1)? glm::mix(glm::vec3(0,0,0),tmpColor, intensity): tmpColor;
+
+    fragment.color = Color(tmpColor.x, tmpColor.y, tmpColor.z);
+}
+
+
+void planet4FragmentShader(Fragment& fragment) {
+
+    glm::vec3 groundColor = glm::vec3(5.0f/255.0f,160.0f/255.0f, 20.0f/255.0f);
+    glm::vec3 oceanColor = glm::vec3(47.0f/255.0f,237.0f/255.0f, 73.0f/255.0f);
+    glm::vec3 cloudColor = glm::vec3(242.0f/255.0f,183.0f/255.0f, 153.0f/255.0f);
+    glm::vec3 uv = glm::vec3(fragment.original.x, fragment.original.y, fragment.original.z) ;
+    float intensity = glm::dot(fragment.normal, L);
+    //float intensity2 = glm::dot(fragment.normal, L3 * 2.0f);
+    //float intensity = fragment.intensity;
+    float oxE = 3000;
+    float oyE = 3000;
+    float zoomE = 500;
+    ox = 3000.0f+ std::sin(timeAni)*0.02f;
+    oy =3000.0f+ std::sin(timeAni*0.3f)*0.02f;
+    zoom =900.0f;
+
+    float noiseValue = abs(planetContientNoiseGenerator.GetNoise((uv.x + oxE) * zoomE/5.0f, (uv.y + oyE) * zoomE/5.0f, uv.z * zoomE/5.0f)) ;
+    float noiseValueB = abs(planet2Generator.GetNoise((uv.x + oxE) * zoomE/3.0f, (uv.y + oyE) * zoomE/3.0f, uv.z * zoomE/3.0f)) ;
+
+    float noiseValueC = abs(sunNoiseGenerator.GetNoise((uv.x + ox) * zoom/3.0f + timeAni *10.f, (uv.y + oy) * zoom/3.0f, uv.z * zoom/3.0f)) ;
+
+    intensity = (intensity< 0.05f)? 0.05f: intensity;
+    //intensity2 = (intensity2< 0.05f)? 0.05f: intensity2;
+
+    glm::vec3 tmpColor =  glm::mix(oceanColor, groundColor, noiseValue);
+    tmpColor = (noiseValueB<0.2f)? glm::mix(glm::vec3(0.23, 0, 0.53f), tmpColor, noiseValueB):tmpColor;
+    tmpColor = (noiseValueC>0.5f)? glm::mix(cloudColor, tmpColor, noiseValueC):tmpColor;
+    tmpColor = (noiseValueC<0.2f)? glm::mix(glm::vec3(1.0, 0, 0.13f), tmpColor, noiseValueC):tmpColor;
+    tmpColor =(intensity<=1)? glm::mix(glm::vec3(0,0,0),tmpColor, intensity): tmpColor;
+
+    fragment.color = Color(tmpColor.x, tmpColor.y, tmpColor.z);
+}
+
+void planet5FragmentShader(Fragment& fragment) {
+
+    glm::vec3 groundColor = glm::vec3(5.0f/255.0f,20.0f/255.0f, 160.0f/255.0f);
+    glm::vec3 oceanColor = glm::vec3(47.0f/255.0f,73.0f/255.0f, 237.0f/255.0f);
+    glm::vec3 cloudColor = glm::vec3(242.0f/255.0f,183.0f/255.0f, 153.0f/255.0f);
+    glm::vec3 uv = glm::vec3(fragment.original.x, fragment.original.y, fragment.original.z) ;
+    float intensity = glm::dot(fragment.normal, L);
+    //float intensity2 = glm::dot(fragment.normal, L3 * 2.0f);
+    //float intensity = fragment.intensity;
+    float oxE = 3000;
+    float oyE = 3000;
+    float zoomE = 500;
+    ox = 3000.0f+ std::sin(timeAni)*0.02f;
+    oy =3000.0f+ std::sin(timeAni*0.3f)*0.02f;
+    zoom =900.0f;
+
+    float noiseValue = abs(planetContientNoiseGenerator.GetNoise((uv.x + oxE) * zoomE/5.0f, (uv.y + oyE) * zoomE/5.0f, uv.z * zoomE/5.0f)) ;
+    float noiseValueC = abs(planetCloudNoiseGenerator.GetNoise((uv.x + ox) * zoom/3.0f + timeAni *10.f, (uv.y + oy) * zoom/3.0f, uv.z * zoom/3.0f)) ;
+
+    intensity = (intensity< 0.05f)? 0.05f: intensity;
+    //intensity2 = (intensity2< 0.05f)? 0.05f: intensity2;
+
+    glm::vec3 tmpColor =  glm::mix(oceanColor, groundColor, noiseValue);
+    tmpColor = (noiseValueC>0.5f)? glm::mix(cloudColor, tmpColor, noiseValueC):tmpColor;
     tmpColor =(intensity<=1)? glm::mix(glm::vec3(0,0,0),tmpColor, intensity): tmpColor;
 
     fragment.color = Color(tmpColor.x, tmpColor.y, tmpColor.z);

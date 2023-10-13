@@ -25,7 +25,7 @@ if [ $? -eq 0 ]; then
     echo "Compilación exitosa."
 
     # Ejecutar el ejecutable (ajusta el nombre del ejecutable si es necesario)
-    ./SR1
+    ./lab5
 else
     echo "La compilación falló."
 fi

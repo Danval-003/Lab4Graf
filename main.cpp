@@ -1,4 +1,5 @@
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_events.h>
 #include <cmath>
 #include <glm/geometric.hpp>
 #include <vector>
@@ -11,6 +12,7 @@
 #include "uniform.h"
 #include <unordered_map>
 #include <random>
+#include <functional>
 #include "render.h"
 
 const int SCREEN_WIDTH = pantallaAncho;
@@ -36,6 +38,8 @@ void initializeRenderFunctions() {
     renderFunctions["sun"] = sunFragmentShader;
     renderFunctions["planet2"] = planet2FragmentShader;
     renderFunctions["planet3"] = planet3FragmentShader;
+    renderFunctions["planet4"] = planet4FragmentShader;
+    renderFunctions["planet6"] = planet5FragmentShader;
     renderFunctions["ship"] = shipFragmentShader;
     // Agrega más funciones para otros objetos aquí si es necesario
 }
@@ -50,6 +54,8 @@ struct RenderData {
     Uniform planet3U{};
     Uniform moon1U{};
     Uniform sunU{};
+    bool moons;
+    std::string planet;
     std::vector<Facer> sphere;
     std::vector<Facer> ship;
     std::vector<Fragment> concurrentFragments;
@@ -90,8 +96,10 @@ struct RenderData {
     }
 
     void initializeCameraOrientation() {
-        xRotate = 180.0f;
+        xRotate = 0.0f;
         yRotate = 0.0f;
+        planet = "sun";
+        moons = false;
         orientation = glm::vec3(5.0f * sin(glm::radians(xRotate)) * cos(glm::radians(yRotate)), 5.0f * sin(glm::radians(yRotate)), -5.0f * cos(glm::radians(xRotate)) * cos(glm::radians(yRotate))) + cameraPosition;
     }
 
@@ -112,66 +120,32 @@ struct RenderData {
 // ... (resto del código)
 
     void handleKeyPress(SDL_Keycode key) {
-        // Variables para el desplazamiento y rotación
-        float moveSpeed = 0.1f;
-        float rotateSpeed = 4.0f;
 
         switch (key) {
-            case SDLK_SPACE:
-                cameraPosition += moveSpeed * uper * 5.0f;
-                orientation += moveSpeed * uper* 5.0f;
+            case SDLK_1:
+                planet = "sun";
+                moons = false;
                 break;
-            case SDLK_v:
-                cameraPosition -= moveSpeed * uper * 5.0f;
-                orientation -= moveSpeed * uper* 5.0f;
+            case SDLK_2:
+                planet = "planet";
+                moons = true;
                 break;
-            case SDLK_d:
-                // Mover hacia la derecha
-                cameraPosition += moveSpeed * glm::normalize(glm::cross(cameraOrientation, uper)) * 5.0f;
-                orientation += moveSpeed * glm::normalize(glm::cross(cameraOrientation, uper))* 5.0f;
+
+            case SDLK_3:
+                planet = "planet2";
+                moons = true;
                 break;
-            case SDLK_a:
-                // Mover hacia la izquierda
-                cameraPosition -= moveSpeed * glm::normalize(glm::cross(cameraOrientation, uper))* 5.0f;
-                orientation -= moveSpeed * glm::normalize(glm::cross(cameraOrientation, uper))* 5.0f;
+            case SDLK_4:
+                planet = "planet3";
+                moons = false;
                 break;
-            case SDLK_w:
-                // Mover hacia adelante
-                cameraPosition += moveSpeed * cameraOrientation;
-                orientation += moveSpeed * cameraOrientation;
+            case SDLK_5:
+                planet = "planet4";
+                moons = false;
                 break;
-            case SDLK_s:
-                // Mover hacia atrás
-                cameraPosition -= moveSpeed * cameraOrientation;
-                orientation -= moveSpeed * cameraOrientation;
-                break;
-            case SDLK_LEFT:
-                // Girar hacia la izquierda
-                xRotate -= rotateSpeed;
-                updateCameraOrientation();
-                moveShipZ = -3.14f * 2.0f;
-                break;
-            case SDLK_RIGHT:
-                // Girar hacia la derecha
-                xRotate += rotateSpeed;
-                updateCameraOrientation();
-                moveShipZ = 3.14f * 2.0f;
-                break;
-            case SDLK_DOWN:
-                // Mirar hacia abajo
-                yRotate = glm::clamp(yRotate + rotateSpeed, -80.0f, 80.0f);
-                updateCameraOrientation();
-                moveShipX = 3.14f * 2.0f;
-                break;
-            case SDLK_UP:
-                // Mirar hacia arriba
-                yRotate = glm::clamp(yRotate - rotateSpeed, -80.0f, 80.0f);
-                updateCameraOrientation();
-                moveShipX = -3.14f * 2.0f;
-                break;
-            case SDLK_m:
-                // Mirar hacia arriba
-                changeCamera();
+            case SDLK_6:
+                planet = "planet6";
+                moons = false;
                 break;
             default:
                 break;
@@ -243,16 +217,16 @@ struct RenderData {
         concurrentFragments.clear();
         configPlanetNoiseGenerator();
         cameraOrientation = orientation - cameraPosition;
-        glm::vec3 planet1Position = glm::vec3(-2.5f * std::cos(planetRotation1), 0, 2.5f * std::sin(planetRotation1)) + sunPosition;
+        glm::vec3 planet1Position = glm::vec3(-2.5f * std::cos(planetRotation2), 0, 2.5f * std::sin(planetRotation2)) + sunPosition;
         shipPos = cameraOrientation /8.5f + cameraPosition +uper*0.15f;
         glm::vec3 planet2Position = glm::vec3(-1.5f * std::cos(planetRotation2), 0, 1.5f * std::sin(planetRotation2)) + sunPosition;
         glm::vec3 planet3Position = glm::vec3(0,0,10);
         glm::vec3 moon1Position = glm::vec3(-0.4f * cos(glm::radians(bRotate)), 0, 0.4f * sin(glm::radians(bRotate))) + planet1Position;
-        L2 = (glm::vec3(0, 0, 0) - planet1Position);
+        L2 = L;
         L6 = (glm::vec3(0, 0, 0) - planet2Position);
-        L3 = (moon1Position - planet1Position);
-        L5 = (glm::vec3(0, 0, 0) - moon1Position);
-        L4 = (planet1Position - moon1Position);
+        L3 = (planet1Position - glm::vec3(0, 0, 0));
+        L5 = L;
+        L4 = (glm::vec3(0, 0, 0)-planet1Position);
 
         sunPos = sunPosition - shipPos;
 
@@ -266,36 +240,10 @@ struct RenderData {
         sunU.viewport = uniform.viewport;
         sunU.projection = uniform.projection;
 
-        shipU.model = createModelMatrixPlanet(shipPos, 0.1f, -xRotate, moveShipX + yRotate, moveShipZ);
-        shipU.view = uniform.view;
-        shipU.viewport = uniform.viewport;
-        shipU.projection = uniform.projection;
-
         planet1U.model = createModelMatrixPlanet(planet1Position, 0.4f, bRotate);
         planet1U.view = uniform.view;
         planet1U.viewport = uniform.viewport;
         planet1U.projection = uniform.projection;
-
-        planet2U.model = createModelMatrixPlanet(planet2Position, 0.25f, bRotate);
-        planet2U.view = uniform.view;
-        planet2U.viewport = uniform.viewport;
-        planet2U.projection = uniform.projection;
-
-        planet3U.model = createModelMatrixPlanet(planet3Position, 1.0f, bRotate);
-        planet3U.view = uniform.view;
-        planet3U.viewport = uniform.viewport;
-        planet3U.projection = uniform.projection;
-
-        moon1U.model = createModelMatrixPlanet(moon1Position, 0.2f, bRotate);
-        moon1U.view = uniform.view;
-        moon1U.viewport = uniform.viewport;
-        moon1U.projection = uniform.projection;
-
-        skyU.model = createModelMatrixPlanet((orientation-cameraPosition)*0.2f + cameraPosition, 3.0f, -xRotate);
-        skyU.view = uniform.view;
-        skyU.viewport = uniform.viewport;
-        skyU.projection = uniform.projection;
-        configSunNoiseGenerator();
 
         std::vector<std::thread> sunThreads;
         std::vector<std::thread> skyblockThreads;
@@ -325,22 +273,12 @@ struct RenderData {
         for (size_t i = 0; i < numThreads; ++i) {
             sunThreads.emplace_back(&RenderData::renderTriangles, this,
                                     std::ref(threadWork[i]),
-                                    std::ref(sunU), "sun");
-            sunThreads.emplace_back(&RenderData::renderTriangles, this,
+                                    std::ref(sunU), planet);
+            if (moons) {
+                sunThreads.emplace_back(&RenderData::renderTriangles, this,
                                     std::ref(threadWork[i]),
-                                    std::ref(planet1U), "planet");
-            sunThreads.emplace_back(&RenderData::renderTriangles, this,
-                                    std::ref(threadWork[i]),
-                                    std::ref(planet2U), "planet2");
-            sunThreads.emplace_back(&RenderData::renderTriangles, this,
-                                    std::ref(threadWork[i]),
-                                    std::ref(planet3U), "planet3");
-            sunThreads.emplace_back(&RenderData::renderTriangles, this,
-                                    std::ref(threadWork[i]),
-                                    std::ref(moon1U), "moon");
-            sunThreads.emplace_back(&RenderData::renderTriangles, this,
-                                    std::ref(threadWorkShip[i]),
-                                    std::ref(shipU), "ship");
+                                    std::ref(planet1U), "moon");
+            }
         }
 
         for (std::thread& t : sunThreads) {
@@ -381,7 +319,6 @@ int main(int argc, char* argv[]) {
                     break;
                 case SDL_KEYDOWN:
                     renderData.handleKeyPress(event.key.keysym.sym);
-                    break;
             }
         }
 
@@ -400,6 +337,7 @@ int main(int argc, char* argv[]) {
         std::string fpsText = "FPS: " + std::to_string(fps);
         SDL_SetWindowTitle(window, fpsText.c_str());
         renderData.bRotate++;
+        timeAni+=3.1416f/10.0f;
     }
 
     SDL_DestroyRenderer(renderer);
