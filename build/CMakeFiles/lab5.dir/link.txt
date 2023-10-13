@@ -1,1 +1,0 @@
-/usr/bin/c++ CMakeFiles/lab5.dir/main.cpp.o CMakeFiles/lab5.dir/render.cpp.o CMakeFiles/lab5.dir/color.cpp.o CMakeFiles/lab5.dir/framebuffer.cpp.o CMakeFiles/lab5.dir/vertexGML.cpp.o CMakeFiles/lab5.dir/objSettings.cpp.o CMakeFiles/lab5.dir/uniform.cpp.o -o lab5  /usr/lib/libSDL2main.a /usr/lib/libSDL2main.a /usr/lib/libSDL2-2.0.so.0.2800.4 

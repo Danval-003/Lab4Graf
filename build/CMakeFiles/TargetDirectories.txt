@@ -1,3 +1,0 @@
-/home/danval/Lab5_graphics/build/CMakeFiles/lab5.dir
-/home/danval/Lab5_graphics/build/CMakeFiles/edit_cache.dir
-/home/danval/Lab5_graphics/build/CMakeFiles/rebuild_cache.dir
