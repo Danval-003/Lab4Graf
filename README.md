@@ -1,5 +1,7 @@
 # Lab 4 Gráficas
 Existen en este laboratorio 5 shaders diferentes
+## [Video con los shaders](https://www.youtube.com/watch?v=QIYzBDQsCXk)
+
 ##  El sol
 ![2023-10-12-22-35-13](https://github.com/Danval-003/Lab4Graf/assets/77825594/105ba100-28e3-47d1-8df6-dbae7db52eeb)
 
