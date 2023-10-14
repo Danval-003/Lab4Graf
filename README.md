@@ -12,7 +12,7 @@ Existen en este laboratorio 5 shaders diferentes
 ## Un mini planeta rocoso con su luna
 ![2023-10-13-17-59-08](https://github.com/Danval-003/Lab4Graf/assets/77825594/82fa5ceb-bfd6-4e86-94c9-58e522d61439)
 
-## Un planeta de hielo
+## Un planeta gaseoso azul
 
 ![2023-10-13-18-00-55](https://github.com/Danval-003/Lab4Graf/assets/77825594/10a158f5-304d-469d-9a9f-ceaf33ad453b)
 
