@@ -21,5 +21,5 @@ Existen en este laboratorio 5 shaders diferentes
 
 ![2023-10-13-18-05-51](https://github.com/Danval-003/Lab4Graf/assets/77825594/4c2aefd1-e0d5-4325-8a0d-6210d38c1b6a)
 
-## Un planeta de agua
+## Gigante gaseoso
 ![2023-10-13-18-09-03](https://github.com/Danval-003/Lab4Graf/assets/77825594/9fb32005-66ef-4e1f-8351-f620467fe698)
