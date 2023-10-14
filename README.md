@@ -1,40 +1,23 @@
-# Proyecto 1 Sistema solar
-# Sistema Solar 3D en C++
-### [Video presentación](https://youtu.be/2W8qOz7SgZw)
+# Lab 4 Gráficas
+Existen en este laboratorio 5 shaders diferentes
+##  El sol
+![2023-10-12-22-35-13](https://github.com/Danval-003/Lab4Graf/assets/77825594/105ba100-28e3-47d1-8df6-dbae7db52eeb)
 
-Este proyecto de simulación en C++ crea un sistema solar en 3D utilizando la biblioteca SDL2 y OpenGL. Permite al usuario explorar y observar el sistema solar desde diferentes ángulos y perspectivas. El proyecto incluye representaciones en 3D de planetas, una nave espacial y el sol, todos los cuales pueden ser explorados y observados desde una cámara en primera persona.
+## La Tierra con su luna
 
-## Características principales
+![2023-10-13-17-57-01](https://github.com/Danval-003/Lab4Graf/assets/77825594/5f047ca5-f6ee-4257-9157-29c5954306ad)
 
-- Visualización en tiempo real de un sistema solar en 3D.
-- Exploración interactiva del sistema solar desde una cámara en primera persona.
-- Representaciones detalladas de planetas, el sol y una nave espacial.
-- Movimiento suave de la cámara y capacidad de cambiar la perspectiva.
-- Cálculo de órbitas planetarias y rotación.
-- Efectos visuales como iluminación y sombras.
+## Un mini planeta rocoso con su luna
+![2023-10-13-17-59-08](https://github.com/Danval-003/Lab4Graf/assets/77825594/82fa5ceb-bfd6-4e86-94c9-58e522d61439)
 
-## Requisitos del sistema
+## Un planeta de hielo
 
-Asegúrate de tener instalados los siguientes componentes antes de ejecutar el proyecto:
+![2023-10-13-18-00-55](https://github.com/Danval-003/Lab4Graf/assets/77825594/10a158f5-304d-469d-9a9f-ceaf33ad453b)
 
-- SDL2: La biblioteca Simple DirectMedia Layer para la manipulación de ventanas y gráficos.
-- OpenGL: Se utiliza para renderizar gráficos en 3D.
-- C++ Compiler: Un compilador de C++ compatible para compilar el código fuente.
 
-## Instrucciones de uso
+## Un planeta radiactivo alienigena
 
-1. Clona este repositorio en tu máquina local.
-2. Compila el proyecto utilizando un compilador C++ compatible.
-3. Ejecuta el programa resultante.
-4. Usa las teclas del teclado para interactuar con la simulación:
-    - `W`, `A`, `S`, `D` para mover la cámara.
-    - `↑`, `↓`, `←`, `→` para cambiar la orientación de la cámara.
-    - `M` para cambiar la perspectiva de la cámara.
-    - `SPACE` para mover la cámara hacia adelante.
-    - `V` para mover la cámara hacia atrás.
+![2023-10-13-18-05-51](https://github.com/Danval-003/Lab4Graf/assets/77825594/4c2aefd1-e0d5-4325-8a0d-6210d38c1b6a)
 
-## Notas adicionales
-
-Este proyecto utiliza técnicas de programación en 3D y OpenGL para crear una experiencia de simulación realista del sistema solar. Puedes explorar y observar el sistema solar desde diferentes ángulos y perspectivas. Además, puedes cambiar la perspectiva de la cámara para ver desde la nave espacial o desde el espacio exterior.
-
-¡Disfruta explorando este sistema solar en 3D y aprendiendo sobre las órbitas y movimientos de los planetas!
+## Un planeta de agua
+![2023-10-13-18-09-03](https://github.com/Danval-003/Lab4Graf/assets/77825594/9fb32005-66ef-4e1f-8351-f620467fe698)
